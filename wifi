@@ -1,0 +1,209 @@
+#!/bin/bash
+## 
+## CONTRIBUTORS: 
+## 
+##     * Gabriel Gonzalez (gabeg@bu.edu) 
+## 
+## 
+## LICENSE: 
+## 
+##     The MIT License (MIT)
+## 
+## 
+## NAME:
+## 
+##     wifi - Display wifi information.
+## 
+## 
+## SYNTAX: 
+## 
+##     wifi [-s] [-d]
+## 
+## 
+## PURPOSE:
+## 
+##     Display network connectivity information.
+## 
+## 
+## KEYWORDS:
+## 
+##     -s, --ssid
+##         Displays the SSID for the current internet connection.
+## 
+##     -d, --display
+##         Display a GUI noification, using "noti", that shows the battery level.
+## 
+## 
+## FUNCTIONS:
+## 
+##     print_usage - Print program usage.
+## 
+##     data_status - Check data from network file is valid.
+## 
+##     print_strength - Print network signal strength.
+##     print_ssid     - Print network SSID.
+## 
+##     gui_display  - Display battery information using the GUI.
+## 
+## 
+## FILE STRUCTURE:
+## 
+##     * Print Program Usage
+##     * Network Data Validity
+##     * Print Network Information
+##     * GUI Wifi Notification
+##     * Display Network Information
+## 
+## 
+## MODIFICATION HISTORY:
+## 	
+##     gabeg Dec 19 2014 <> Created.
+## 
+##     gabeg Jan 07 2015 <> Added the GUI notification display.
+## 
+## **********************************************************************************
+
+
+
+## ================
+## GLOBAL VARIABLES
+## ================
+
+## Program information
+ARGV=("$@")
+PROG_NAME=`basename $0`
+
+## Log files
+NETWORK_LOG="/proc/net/wireless"
+
+## Gui notification bubble
+NOTIFY="noti"
+NOTIFY_PATH=`hash "${NOTIFY}" 2>&1`
+
+
+
+## ###############################
+## ##### PRINT PROGRAM USAGE #####
+## ###############################
+
+## Print program usage
+function print_usage {
+    echo "Usage: wifi [-s] [-d]"
+    exit 1
+}
+
+
+
+## #################################
+## ##### NETWORK DATA VALIDITY #####
+## #################################
+
+## Check data from network file
+function data_status {
+    local link="$1"
+    local dbm="$2"
+    
+    if [ "${link}" -eq "${link}" ] 2> /dev/null \
+           && [ "${dbm}" -eq "${dbm}" ] 2> /dev/null
+    then 
+        :
+    else
+        echo "${PROG_NAME}: No internet connection."
+        exit 1
+    fi
+}
+
+
+
+## #####################################
+## ##### PRINT NETWORK INFORMATION #####
+## #####################################
+
+## Print network signal strength
+function print_strength {
+    
+    ## Get wifi information
+    local info=`tail -1 "${NETWORK_LOG}"`
+    local link=`echo "${info}" | awk ' { print $3 } ' | sed 's/\.//g'`
+    local dbm=`echo "${info}" | awk ' { print $4 } ' | sed 's/\.//g'`
+    
+    ## Check that wifi info is a valid number
+    data_status "${link}" "${dbm}"
+    
+    ## Calculate the signal strength
+    local signal=`echo "scale=3; ( 100 + ${dbm} ) / ${link} * 100.0" \
+                      | bc \
+                      | sed 's/.$//'`
+    local valid=`echo "${signal} > 1" | bc`
+    
+    if [ ${valid} -eq 1 ]; then
+        echo "Wifi: ${signal}%"
+    else
+        echo "${PROG_NAME}: Bad signal (${signal})"
+        exit 1
+    fi
+}
+
+
+
+## Print network SSID
+function print_ssid {
+    local ssid=`iw dev wlp1s0 link \
+                    | grep SSID \
+                    | cut -f2 -d':' \
+                    | sed 's/^[ \t]*//'`
+    echo "SSID: ${ssid}"
+}
+
+
+
+## ####################################
+## ##### GUI BATTERY NOTIFICATION #####
+## ####################################
+
+## GUI notification for battery information
+function gui_display {
+    
+    ## Check if notification program exists
+    if [ ! -z "${NOTIFY_PATH}" ]; then 
+        echo "${PROG_NAME}: '${NOTIFY}' does not exist."
+        exit 1
+    fi
+    
+    ## Display current battery level
+    ${NOTIFY} --time 5 -b "$(print_strength)\n$(print_ssid)" 
+}
+
+
+
+## #######################################
+## ##### DISPLAY NETWORK INFORMATION #####
+## #######################################
+
+## Display Wifi information
+function main {
+    
+    ## Display wifi information
+    case "${ARGV[0]}" in
+        "")
+            print_strength
+            ;;
+        
+        "-s"|"--ssid")
+            print_ssid
+            ;;
+        
+        "-d"|"--display")
+            gui_display
+            ;;
+        
+        *)
+            print_usage
+            ;;
+    esac    
+}
+
+
+
+## Execute main
+main 
