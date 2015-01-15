@@ -88,7 +88,7 @@ NOTIFY_PATH=`hash "${NOTIFY}" 2>&1`
 
 ## Print program usage
 function print_usage {
-    echo "Usage: wifi [-s] [-d]"
+    echo "Usage: ${PROG_NAME} [-s] [-d]"
     exit 1
 }
 
