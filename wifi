@@ -17,7 +17,7 @@
 ## 
 ## SYNTAX: 
 ## 
-##     wifi [-s] [-d]
+##     wifi [-s] [-c] [-d]
 ## 
 ## 
 ## PURPOSE:
@@ -29,6 +29,9 @@
 ## 
 ##     -s, --ssid
 ##         Displays the SSID for the current internet connection.
+## 
+##     -c, --connect
+##         Connect to the internet, given the netctl configuration file.
 ## 
 ##     -d, --display
 ##         Display a GUI noification, using "noti", that shows the battery level.
@@ -43,6 +46,8 @@
 ##     print_strength - Print network signal strength.
 ##     print_ssid     - Print network SSID.
 ## 
+##     internet_connect - Connect to the internet, given the netctl config file.
+## 
 ##     gui_display  - Display battery information using the GUI.
 ## 
 ## 
@@ -51,6 +56,7 @@
 ##     * Print Program Usage
 ##     * Network Data Validity
 ##     * Print Network Information
+##     * Connect to the Internet
 ##     * GUI Wifi Notification
 ##     * Display Network Information
 ## 
@@ -60,6 +66,9 @@
 ##     gabeg Dec 19 2014 <> Created.
 ## 
 ##     gabeg Jan 07 2015 <> Added the GUI notification display.
+## 
+##     gabeg Mar 03 2015 <> Added the ability to connect to the internet using 
+##                          netctl, given a netctl config file.
 ## 
 ## **********************************************************************************
 
@@ -73,6 +82,12 @@
 ARGV=("$@")
 PROG_NAME=`basename $0`
 
+## Change array delimeter
+# IFS=$'\n'
+
+## Directories
+NETWORK_DIR="/etc/netctl"
+
 ## Log files
 NETWORK_LOG="/proc/net/wireless"
 
@@ -82,13 +97,14 @@ NOTIFY_PATH=`hash "${NOTIFY}" 2>&1`
 
 
 
+
 ## ###############################
 ## ##### PRINT PROGRAM USAGE #####
 ## ###############################
 
 ## Print program usage
 function print_usage {
-    echo "Usage: ${PROG_NAME} [-s] [-d]"
+    echo "Usage: ${PROG_NAME} [-s] [-d] [-c]"
     exit 1
 }
 
@@ -157,6 +173,37 @@ function print_ssid {
 
 
 
+## ###################################
+## ##### CONNECT TO THE INTERNET #####
+## ###################################
+
+## Connect to the internet using netctl
+function internet_connect {
+    
+    ## Netctl directory files
+    contents=(`ls -1 "${NETWORK_DIR}"`)
+    
+    ## Loop through directory files
+    for net in "${contents[@]}"; do
+        
+        ## Config files
+        if [ -f "${net}" ]; then
+            
+            ## Conenct to the specified config file
+            if [[ "${net}" == "${ARGV[1]}" ]]; then
+                if [ ${UID} == 0 ]; then
+                    netctl start "${net}"
+                else
+                    sudo netctl start "${net}"
+                fi
+            fi
+            
+        fi
+    done
+}
+
+
+
 ## ####################################
 ## ##### GUI BATTERY NOTIFICATION #####
 ## ####################################
@@ -191,6 +238,10 @@ function main {
         
         "-s"|"--ssid")
             print_ssid
+            ;;
+        
+        "-c"|"--connect")
+            internet_connect
             ;;
         
         "-d"|"--display")
