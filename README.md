@@ -24,7 +24,7 @@ Requires:
 
 Update your PATH environment variable in your shell rc file with:
     
-    $ export PATH="${PATH}":"/PATH/TO/PROGRAM/wifi
+    $ export PATH="${PATH}":"/PATH/TO/PROGRAM/wifi"
 
 Now the program is ready for use!
 
