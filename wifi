@@ -187,14 +187,23 @@ function internet_connect {
     for net in "${contents[@]}"; do
         
         ## Config files
-        if [ -f "${net}" ]; then
+        if [ ! -d "${net}" ]; then
             
             ## Conenct to the specified config file
             if [[ "${net}" == "${ARGV[1]}" ]]; then
-                if [ ${UID} == 0 ]; then
-                    netctl start "${net}"
-                else
-                    sudo netctl start "${net}"
+                echo -n "Connecting to '${net}'..."
+                
+                sudo netctl stop-all
+                sudo systemctl stop netctl
+                sudo systemctl start netctl
+                
+                start=`sudo netctl start "${net}"`
+                
+                if [ ! -z "${start}" ]; then
+                    echo "Fail."
+                    exit 1
+                else                
+                    echo "Done."
                 fi
             fi
             
