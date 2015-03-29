@@ -41,7 +41,7 @@
 ## 
 ##     print_usage - Print program usage.
 ## 
-##     data_status - Check data from network file is valid.
+##     status_data - Check data from network file is valid.
 ## 
 ##     print_strength - Print network signal strength.
 ##     print_ssid     - Print network SSID.
@@ -93,7 +93,6 @@ NETWORK_LOG="/proc/net/wireless"
 
 ## Gui notification bubble
 NOTIFY="noti"
-NOTIFY_PATH=`hash "${NOTIFY}" 2>&1`
 
 
 
@@ -114,19 +113,47 @@ function print_usage {
 ## ##### NETWORK DATA VALIDITY #####
 ## #################################
 
-## Check data from network file
-function data_status {
-    local link="$1"
-    local dbm="$2"
+## Check status of wifi
+function status_wifi {
     
-    if [ "${link}" -eq "${link}" ] 2> /dev/null \
-           && [ "${dbm}" -eq "${dbm}" ] 2> /dev/null
-    then 
-        :
-    else
-        echo "${PROG_NAME}: No internet connection."
+    ## Check if command exists
+    exist=`hash ip 2>&1`
+    
+    if [ ! -z "${exist}" ]; then
+        echo "${PROG_NAME}: 'ip' command does not exist." 
         exit 1
     fi
+    
+    ## Address of default gateway
+    addr=`ip r | grep default | cut -f3 -d' '`
+    
+    ## Ping default gateway
+    ping -q -w 1 -c 1 "${addr}" &> /dev/null
+    
+    ## Return the return status
+    return $?
+}
+
+
+
+## Check data from network file
+function status_data {
+    
+    ## Check values of link and signal strength
+    if [ "$1" -eq "$1" ] 2> /dev/null \
+           && [ "$2" -eq "$2" ] 2> /dev/null
+    then
+        ## Check status of wifi
+        status_wifi
+        
+        if [ $? -eq 0 ]; then
+            return 0
+        fi
+    fi
+    
+    ## No internet connection detected
+    echo "${PROG_NAME}: No internet connection."
+    exit 1
 }
 
 
@@ -139,18 +166,18 @@ function data_status {
 function print_strength {
     
     ## Get wifi information
-    local info=`tail -1 "${NETWORK_LOG}"`
-    local link=`echo "${info}" | awk ' { print $3 } ' | sed 's/\.//g'`
-    local dbm=`echo "${info}" | awk ' { print $4 } ' | sed 's/\.//g'`
+    info=`tail -1 "${NETWORK_LOG}"`
+    link=`echo "${info}" | awk ' { print $3 } ' | sed 's/\.//g'`
+    dbm=`echo "${info}" | awk ' { print $4 } ' | sed 's/\.//g'`
     
     ## Check that wifi info is a valid number
-    data_status "${link}" "${dbm}"
+    status_data "${link}" "${dbm}"
     
     ## Calculate the signal strength
-    local signal=`echo "scale=3; ( 100 + ${dbm} ) / ${link} * 100.0" \
-                      | bc \
-                      | sed 's/.$//'`
-    local valid=`echo "${signal} > 1" | bc`
+    signal=`echo "scale=3; ( 100 + ${dbm} ) / ${link} * 100.0" \
+                | bc \
+                | sed 's/.$//'`
+    valid=`echo "${signal} > 1" | bc`
     
     if [ ${valid} -eq 1 ]; then
         echo "Wifi: ${signal}%"
@@ -164,10 +191,20 @@ function print_strength {
 
 ## Print network SSID
 function print_ssid {
-    local ssid=`iw dev wlp1s0 link \
-                    | grep SSID \
-                    | cut -f2 -d':' \
-                    | sed 's/^[ \t]*//'`
+    
+    ## Check if command exists
+    exist=`hash iw 2>&1`
+    
+    if [ ! -z "${exist}" ]; then
+        echo "${PROG_NAME}: 'iw' command does not exist."
+        exit 1
+    fi
+    
+    ## Print SSID
+    ssid=`iw dev wlp1s0 link \
+              | grep SSID \
+              | cut -f2 -d':' \
+              | sed 's/^[ \t]*//'`
     echo "SSID: ${ssid}"
 }
 
@@ -179,6 +216,20 @@ function print_ssid {
 
 ## Connect to the internet using netctl
 function internet_connect {
+    
+    ## Check if commands exist
+    net_exist=`hash netctl 2>&1`
+    sys_exist=`hash systemctl 2>&1`
+    
+    if [ ! -z "${net_exist}" ]; then
+        echo "${PROG_NAME}: 'netctl' command does not exist."
+        exit 1
+    fi
+    
+    if [ ! -z "${sys_exist}" ]; then
+        echo "${PROG_NAME}: 'systemctl' command does not exist."
+        exit 1
+    fi
     
     ## Netctl directory files
     contents=(`ls -1 "${NETWORK_DIR}"`)
@@ -221,8 +272,10 @@ function internet_connect {
 function gui_display {
     
     ## Check if notification program exists
-    if [ ! -z "${NOTIFY_PATH}" ]; then 
-        echo "${PROG_NAME}: '${NOTIFY}' does not exist."
+    exist=`hash "${NOTIFY}" 2>&1`
+    
+    if [ ! -z "${exist}" ]; then 
+        echo "${PROG_NAME}: '${NOTIFY}' command does not exist."
         exit 1
     fi
     
