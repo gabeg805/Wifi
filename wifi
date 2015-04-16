@@ -70,6 +70,10 @@
 ##     gabeg Mar 03 2015 <> Added the ability to connect to the internet using 
 ##                          netctl, given a netctl config file.
 ## 
+##     gabeg Apr 16 2015 <> Added a line to the internet_connect" function that sets
+##                          the IP link down before connecting. Still need to have a
+##                          function/global variable that returns IP link (wlp1s0)
+## 
 ## **********************************************************************************
 
 
@@ -128,7 +132,7 @@ function status_wifi {
     addr=`ip r | grep default | cut -f3 -d' '`
     
     ## Ping default gateway
-    ping -q -w 1 -c 1 "${addr}" &> /dev/null
+    ping -q -W 1 -c 1 "${addr}" &> /dev/null
     
     ## Return the return status
     return $?
@@ -244,9 +248,10 @@ function internet_connect {
             if [[ "${net}" == "${ARGV[1]}" ]]; then
                 echo -n "Connecting to '${net}'..."
                 
+                sudo ip link set "wlp1s0" down
                 sudo netctl stop-all
                 sudo systemctl stop netctl
-                sudo systemctl start netctl
+                ## sudo systemctl start netctl
                 
                 start=`sudo netctl start "${net}"`
                 
