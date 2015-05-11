@@ -1,78 +1,16 @@
 #!/bin/bash
+## **********************************************************************************
 ## 
-## CONTRIBUTORS: 
+## Name:    wifi
+## Author:  Gabriel Gonzalez
+## Email:   gabeg@bu.edu
+## License: The MIT License (MIT)
 ## 
-##     * Gabriel Gonzalez (gabeg@bu.edu) 
+## Syntax: wifi [-s] [-c] [-d]
 ## 
-## 
-## LICENSE: 
-## 
-##     The MIT License (MIT)
-## 
-## 
-## NAME:
-## 
-##     wifi - Display wifi information.
-## 
-## 
-## SYNTAX: 
-## 
-##     wifi [-s] [-c] [-d]
-## 
-## 
-## PURPOSE:
-## 
-##     Display network connectivity information.
-## 
-## 
-## KEYWORDS:
-## 
-##     -s, --ssid
-##         Displays the SSID for the current internet connection.
-## 
-##     -c, --connect
-##         Connect to the internet, given the netctl configuration file.
-## 
-##     -d, --display
-##         Display a GUI noification, using "noti", that shows the battery level.
-## 
-## 
-## FUNCTIONS:
-## 
-##     print_usage - Print program usage.
-## 
-##     status_data - Check data from network file is valid.
-## 
-##     print_strength - Print network signal strength.
-##     print_ssid     - Print network SSID.
-## 
-##     internet_connect - Connect to the internet, given the netctl config file.
-## 
-##     gui_display  - Display battery information using the GUI.
-## 
-## 
-## FILE STRUCTURE:
-## 
-##     * Print Program Usage
-##     * Network Data Validity
-##     * Print Network Information
-##     * Connect to the Internet
-##     * GUI Wifi Notification
-##     * Display Network Information
-## 
-## 
-## MODIFICATION HISTORY:
-## 	
-##     gabeg Dec 19 2014 <> Created.
-## 
-##     gabeg Jan 07 2015 <> Added the GUI notification display.
-## 
-##     gabeg Mar 03 2015 <> Added the ability to connect to the internet using 
-##                          netctl, given a netctl config file.
-## 
-##     gabeg Apr 16 2015 <> Added a line to the internet_connect" function that sets
-##                          the IP link down before connecting. Still need to have a
-##                          function/global variable that returns IP link (wlp1s0)
+## Description: Display network connectivity information.
+##              
+## Notes: None.
 ## 
 ## **********************************************************************************
 
@@ -85,9 +23,6 @@
 ## Program information
 ARGV=("$@")
 PROG_NAME=`basename $0`
-
-## Change array delimeter
-# IFS=$'\n'
 
 ## Directories
 NETWORK_DIR="/etc/netctl"
@@ -119,8 +54,6 @@ function print_usage {
 
 ## Check status of wifi
 function status_wifi {
-    
-    ## Check if command exists
     exist=`hash ip 2>&1`
     
     if [ ! -z "${exist}" ]; then
@@ -128,13 +61,9 @@ function status_wifi {
         exit 1
     fi
     
-    ## Address of default gateway
     addr=`ip r | grep default | cut -f3 -d' '`
-    
-    ## Ping default gateway
     ping -q -W 1 -c 1 "${addr}" &> /dev/null
     
-    ## Return the return status
     return $?
 }
 
@@ -142,12 +71,7 @@ function status_wifi {
 
 ## Check data from network file
 function status_data {
-    
-    ## Check values of link and signal strength
-    if [ "$1" -eq "$1" ] 2> /dev/null \
-           && [ "$2" -eq "$2" ] 2> /dev/null
-    then
-        ## Check status of wifi
+    if [ "$1" -eq "$1" ] 2> /dev/null; then
         status_wifi
         
         if [ $? -eq 0 ]; then
@@ -155,7 +79,6 @@ function status_data {
         fi
     fi
     
-    ## No internet connection detected
     echo "${PROG_NAME}: No internet connection."
     exit 1
 }
@@ -171,14 +94,16 @@ function print_strength {
     
     ## Get wifi information
     info=`tail -1 "${NETWORK_LOG}"`
-    link=`echo "${info}" | awk ' { print $3 } ' | sed 's/\.//g'`
     dbm=`echo "${info}" | awk ' { print $4 } ' | sed 's/\.//g'`
+    min=95
+    max=35
+    diff=$[ ${min} - ${max} ]
     
     ## Check that wifi info is a valid number
-    status_data "${link}" "${dbm}"
+    status_data "${dbm}"
     
     ## Calculate the signal strength
-    signal=`echo "scale=3; ( 100 + ${dbm} ) / ${link} * 100.0" \
+    signal=`echo "scale=3; ( ${min} + ${dbm} ) / ${diff} * 100.0" \
                 | bc \
                 | sed 's/.$//'`
     valid=`echo "${signal} > 1" | bc`
@@ -195,8 +120,6 @@ function print_strength {
 
 ## Print network SSID
 function print_ssid {
-    
-    ## Check if command exists
     exist=`hash iw 2>&1`
     
     if [ ! -z "${exist}" ]; then
@@ -204,7 +127,6 @@ function print_ssid {
         exit 1
     fi
     
-    ## Print SSID
     ssid=`iw dev wlp1s0 link \
               | grep SSID \
               | cut -f2 -d':' \
@@ -248,10 +170,9 @@ function internet_connect {
             if [[ "${net}" == "${ARGV[1]}" ]]; then
                 echo -n "Connecting to '${net}'..."
                 
-                sudo ip link set "wlp1s0" down
                 sudo netctl stop-all
                 sudo systemctl stop netctl
-                ## sudo systemctl start netctl
+                sudo ip link set "wlp1s0" down
                 
                 start=`sudo netctl start "${net}"`
                 
