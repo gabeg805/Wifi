@@ -10,7 +10,7 @@ Display wifi information.
 Documentation
 =============
 
-Program documentation can be found in the header of the program.
+Program documentation can be found in the header of the program and in the help file.
 
 
 
@@ -20,7 +20,11 @@ Installation
 
 Requires:
     
+    - ip
     - iw
+    - netctl
+    - systemctl
+    - noti
 
 Update your PATH environment variable in your shell rc file with:
     
@@ -50,4 +54,4 @@ Potential Problems
 To-Do
 =====
 
-- TBD
+- Add wifi scan/search functionality
