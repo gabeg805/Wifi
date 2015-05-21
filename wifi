@@ -6,7 +6,7 @@
 ## Email:   gabeg@bu.edu
 ## License: The MIT License (MIT)
 ## 
-## Syntax: wifi command <argument>
+## Syntax: wifi [options] <arguments>
 ##         
 ##         Use '--help' for more details.
 ##         
@@ -42,28 +42,33 @@ main() {
     programs_exist
     
     case "${ARGV[0]}" in
-        "strength")
-            echo "Wifi: $(get_signal)%"
+        "-s"|"--signal")
+            signal=`get_signal` || exit 1
+            echo "Wifi: ${signal}%"
             ;;
-        "ssid")
-            echo "SSID: $(get_ssid)"
+        "-ss"|"--ssid")
+            ssid=`get_ssid` || exit 1
+            echo "SSID: ${ssid}"
             ;;
-        "search")
-            wifi_search
+        "-S"|"--scan")
+            wifi_scan
             ;;
-        "connect")
+        "-c"|"--connect")
             wifi_connect
             ;;
-        "notify")
+        "-d"|"--disconnect")
+            wifi_disconnect
+            ;;
+        "-n"|"--notify")
             PROG_EXEC+=("${NOTIFY}")
             programs_exist
             wifi_notification
             ;;
-        "-h"|"--help")
+        ""|"-h"|"--help")
             usage
             ;;
         *)
-            echo "${PROG_NAME}: Invalid input '${ARGV[0]}'" 1>&2
+            echo "${PROG_NAME}: Invalid input '${ARGV[0]}'." 1>&2
             echo 1>&2
             usage 1>&2
             ;;
@@ -78,18 +83,20 @@ main() {
 
 ## Print program usage
 usage() {
-    echo "Usage: ${PROG_NAME} command <argument>"
+    echo "Usage: ${PROG_NAME} [options] <arguments>"
     echo
-    echo "Commands:"
-    echo "    strength            Print the wifi signal strength"
-    echo "    ssid                Print the SSID of the connected wifi signal"
-    echo "    search <keyword>    Scan for wifi signals"
-    echo "    connect <wifi>      Connect to the wifi signal"
-    echo "    notify              Displ${ARGV[0]}ay wifi information in a notification bubble"
+    echo "Options:"
+    echo "    -h, --help                Print program usage message"
+    echo "    -s, --signal              Print the wifi signal strength"
+    echo "    -ss, --ssid               Print the SSID of the connected wifi signal"
+    echo "    -S, --scan <keyword>      Scan for wifi signals"
+    echo "    -c, --connect <signal>    Connect to the wifi signal"
+    echo "    -d, --disconnect          Disconnect from the wifi signal"
+    echo "    -n, --notify              Display wifi information in a notification bubble"
     echo
     echo "Arguments:"
-    echo "    <keyword>           Specific keyword to search in scan output"
-    echo "    <wifi>              Wifi file in /etc/netctl to connect to"
+    echo "    <keyword>                 Specific keyword to search in scan output"
+    echo "    <signal>                  Wifi file in /etc/netctl to connect to"
 
     exit 1
 }
@@ -137,27 +144,14 @@ get_ssid() {
 ## ####################################
 
 ## Print network signal strength
-wifi_search() {
+wifi_scan() {
     
     case "${ARGV[1]}" in
         "") 
             search="signal|SSID|$" 
             ;;
-        
-        "signal") 
-            search="signal" 
-            ;;
-        
-        "ssid") 
-            search="SSID" 
-            ;;
-        
-        "info")
-            search="signal|SSID"
-            ;;
-        
         *)
-            usage
+            search="${ARGV[1]}"
             ;;
     esac
     
@@ -168,9 +162,9 @@ wifi_search() {
 
 
 
-## ###################################
-## ##### CONNECT TO THE INTERNET #####
-## ###################################
+## ##############################################
+## ##### CONNECT/DISCONNECT TO THE INTERNET #####
+## ##############################################
 
 ## Connect to the internet using netctl
 wifi_connect() {
@@ -207,13 +201,25 @@ wifi_connect() {
 
 
 
+## Disconnect from the internet using netctl
+wifi_disconnect() {
+    echo -n "Disconnecting wifi..."
+    sudo "${PROG_EXEC[2]}" stop-all
+    echo "Done."
+}
+
+
+
 ## ####################################
 ## ##### GUI BATTERY NOTIFICATION #####
 ## ####################################
 
 ## GUI notification for displaying current battery level
 wifi_notification() {
-    "${NOTIFY}" --time 5 -b "Wifi: $(get_signal)%\nSSID: $(get_ssid)" 
+    signal=`get_signal` || exit 1
+    ssid=`get_ssid` || exit 1
+    
+    "${NOTIFY}" --time 5 -b "Wifi: ${signal}%\nSSID: ${ssid}" 
 }
 
 
@@ -247,7 +253,7 @@ wifi_status() {
         fi
     fi
     
-    echo "${PROG_NAME}: No internet connection."
+    echo "${PROG_NAME}: No internet connection." 1>&2
     exit 1
 }
 
