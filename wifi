@@ -66,11 +66,13 @@ main() {
             ;;
         ""|"-h"|"--help")
             usage
+            exit 0
             ;;
         *)
             echo "${PROG_NAME}: Invalid input '${ARGV[0]}'." 1>&2
             echo 1>&2
             usage 1>&2
+            exit 1
             ;;
     esac    
 }
@@ -97,8 +99,6 @@ usage() {
     echo "Arguments:"
     echo "    <keyword>                 Specific keyword to search in scan output"
     echo "    <signal>                  Wifi file in /etc/netctl to connect to"
-
-    exit 1
 }
 
 
