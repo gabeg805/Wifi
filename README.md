@@ -10,7 +10,8 @@ Display wifi information.
 Documentation
 =============
 
-Program documentation can be found in the header of the program and in the help file.
+Program documentation can be found in the header of the program and in the program
+usage message.
 
 
 
@@ -24,7 +25,7 @@ Requires:
     - iw
     - netctl
     - systemctl
-    - noti
+    - aria
 
 Update your PATH environment variable in your shell rc file with:
     
@@ -46,7 +47,7 @@ If you have any problems, feel free to email me at 'gabeg@bu.edu'.
 Potential Problems
 ==================
 
-- TBD
+- Still calibrating the wifi signal, in order to display accurate wifi strength.
 
 
 
@@ -54,4 +55,4 @@ Potential Problems
 To-Do
 =====
 
-- Add wifi scan/search functionality
+- Add wifi scan/search functionality. Done.

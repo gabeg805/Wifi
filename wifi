@@ -113,7 +113,7 @@ get_signal() {
     ## Get wifi information
     dbm=`tail -1 "${NETWORK_FILE}" | awk '{ print $4 }'`
     min=95
-    max=35
+    max=25
     diff=$[ ${min} - ${max} ]
     
     ## Check that wifi info is a valid number
