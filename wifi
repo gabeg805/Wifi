@@ -26,6 +26,7 @@ ARGV=("$@")
 PROG_NAME=`basename $0`
 PROG_DIR=`echo "$0" | sed "s/\/${PROG_NAME}$//"`
 PROG_EXEC=("ip" "iw" "netctl" "systemctl")
+
 NETWORK_DIR="/etc/netctl"
 NETWORK_FILE="/proc/net/wireless"
 NOTIFY="noti"
@@ -42,6 +43,10 @@ main() {
     programs_exist
     
     case "${ARGV[0]}" in
+        ""|"-h"|"--help")
+            usage
+            exit 0
+            ;;
         "-s"|"--signal")
             signal=`get_signal` || exit 1
             echo "Wifi: ${signal}%"
@@ -63,10 +68,6 @@ main() {
             PROG_EXEC+=("${NOTIFY}")
             programs_exist
             wifi_notification
-            ;;
-        ""|"-h"|"--help")
-            usage
-            exit 0
             ;;
         *)
             echo "${PROG_NAME}: Invalid input '${ARGV[0]}'." 1>&2
@@ -210,20 +211,6 @@ wifi_disconnect() {
 
 
 
-## ####################################
-## ##### GUI BATTERY NOTIFICATION #####
-## ####################################
-
-## GUI notification for displaying current battery level
-wifi_notification() {
-    signal=`get_signal` || exit 1
-    ssid=`get_ssid` || exit 1
-    
-    "${NOTIFY}" --time 5 -b "Wifi: ${signal}%\nSSID: ${ssid}" 
-}
-
-
-
 ## #################################
 ## ##### NETWORK DATA VALIDITY #####
 ## #################################
@@ -232,7 +219,7 @@ wifi_notification() {
 programs_exist() {
     for prog in "${PROG_EXEC[@]}"; do
         if [ ! -z "$(hash ${prog} 2>&1)" ]; then
-            echo "${PROG_NAME}: '${prog}' command does not exist." 
+            echo "${PROG_NAME}: '${prog}' command does not exist." 1>&2
             exit 1
         fi
     done
