@@ -182,7 +182,7 @@ wifi_connect() {
         fi
         
         ## Connect to the specified config file
-        echo -n "Connecting to '${net}'..."
+        echo -n ":: Connecting to '${net}'..."
         
         sudo "${PROG_EXEC[2]}" stop-all
         sudo "${PROG_EXEC[3]}" stop netctl
@@ -204,7 +204,7 @@ wifi_connect() {
 
 ## Disconnect from the internet using netctl
 wifi_disconnect() {
-    echo -n "Disconnecting wifi..."
+    echo -n ":: Disconnecting wifi..."
     sudo "${PROG_EXEC[2]}" stop-all
     echo "Done."
 }
