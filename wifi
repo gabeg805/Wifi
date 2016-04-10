@@ -1,47 +1,36 @@
 #!/bin/bash
-## **********************************************************************************
-## 
-## Name:    wifi
-## Author:  Gabriel Gonzalez
-## Email:   gabeg@bu.edu
-## License: The MIT License (MIT)
-## 
-## Syntax: wifi [options] <arguments>
-##         
-##         Use '--help' for more details.
-##         
-## Description: Display network connectivity information.
-##              
-## Notes: None.
-## 
-## **********************************************************************************
+# ******************************************************************************
+# 
+# Name:    wifi
+# Author:  Gabriel Gonzalez
+# Email:   gabeg@bu.edu
+# License: The MIT License (MIT)
+# 
+# Syntax: wifi [options] <arguments>
+#         
+#         Use '--help' for more details.
+#         
+# Description: Display network connectivity information.
+#              
+# Notes: None.
+# 
+# ******************************************************************************
 
-
-
-## ================
-## GLOBAL VARIABLES
-## ================
-
+# Global variables
 ARGV=("$@")
 PROG_NAME=`basename $0`
 PROG_DIR=`echo "$0" | sed "s/\/${PROG_NAME}$//"`
 PROG_EXEC=("ip" "iw" "netctl" "systemctl")
-
-NETWORK_DIR="/etc/netctl"
-NETWORK_FILE="/proc/net/wireless"
+NETDIR="/etc/netctl"
+NETFILE="/proc/net/wireless"
+NETDEV="wlp1s0"
 NOTIFY="noti"
 
-
-
-## #######################################
-## ##### DISPLAY NETWORK INFORMATION #####
-## #######################################
-
-## Display Wifi information
-main() {
-    
+# ******************************************************************************
+# Display Wifi information
+main()
+{
     programs_exist
-    
     case "${ARGV[0]}" in
         ""|"-h"|"--help")
             usage
@@ -78,13 +67,8 @@ main() {
     esac    
 }
 
-
-
-## ###############################
-## ##### PRINT PROGRAM USAGE #####
-## ###############################
-
-## Print program usage
+# ******************************************************************************
+# Print program usage
 usage() {
     echo "Usage: ${PROG_NAME} [options] <arguments>"
     echo
@@ -102,92 +86,62 @@ usage() {
     echo "    <signal>                  Wifi file in /etc/netctl to connect to"
 }
 
-
-
-## #####################################
-## ##### PRINT NETWORK INFORMATION #####
-## #####################################
-
-## Print network signal strength
-get_signal() {
-    
-    ## Get wifi information
-    dbm=`tail -1 "${NETWORK_FILE}" | awk '{ print $4 }'`
-    min=95
-    max=25
-    diff=$[ ${min} - ${max} ]
-    
-    ## Check that wifi info is a valid number
-    wifi_status "${dbm}"
-    
-    ## Calculate the signal strengt
-    temp=`echo "scale=2; ( ${min} + ${dbm} ) / ${diff} * 100" | bc`
-    signal=`echo "${temp} / 1" | bc`
-    
-    echo "${signal}"
+# ******************************************************************************
+# Print network signal strength
+get_signal()
+{
+    dbm=`tail -1 "${NETFILE}" | awk '{ print $3 }'`
+    if `is_int "${dbm}"`; then
+        if `is_connected`; then
+            :
+        else
+            exit 1
+        fi
+    else
+        exit 1
+    fi
+    signal=`echo "scale=2; ${dbm}/70*100" | bc`
+    echo "${signal} / 1" | bc
 }
 
-
-
-## Print network SSIDLOG
+# ******************************************************************************
+# Print network SSIDLOG
 get_ssid() {
-    ssid=`"${PROG_EXEC[1]}" dev "wlp1s0" link \
+    ssid=`"${PROG_EXEC[1]}" dev "${NETDEV}" link \
               | grep SSID \
               | cut -f2 -d':' \
               | sed 's/^[ \t]*//'`
     echo "${ssid}"
 }
 
-
-
-## ####################################
-## ##### SEARCH FOR WIFI NETWORKS #####
-## ####################################
-
-## Print network signal strength
-wifi_scan() {
-    
+# ***************************************************************************************
+# Print network signal strength
+wifi_scan()
+{
     case "${ARGV[1]}" in
-        "") 
-            search="signal|SSID|$" 
-            ;;
-        *)
-            search="${ARGV[1]}"
-            ;;
+        "") search="signal|SSID|$" ;;
+        *) search="${ARGV[1]}" ;;
     esac
     
-    sudo "${PROG_EXEC[0]}" link set "wlp1s0" up
-    sudo "${PROG_EXEC[1]}" dev "wlp1s0" scan \
+    sudo "${PROG_EXEC[0]}" link set "${NETDEV}" up
+    sudo "${PROG_EXEC[1]}" dev "${NETDEV}" scan \
          | grep --color=always -E "${search}"
 }
 
-
-
-## ##############################################
-## ##### CONNECT/DISCONNECT TO THE INTERNET #####
-## ##############################################
-
-## Connect to the internet using netctl
-wifi_connect() {
-    
-    ## Netctl directory files
-    contents=(`ls -1 "${NETWORK_DIR}"`)
-    
-    ## Loop through directory files
+# ******************************************************************************
+# Connect to the internet using netctl
+wifi_connect()
+{
+    contents=(`ls -1 "${NETDIR}"`)
     for net in "${contents[@]}"; do
-        
-        ## Find correct config file
         if [ -d "${net}" ] || [[ "${net}" != "${ARGV[1]}" ]]; then
             continue
         fi
         
-        ## Connect to the specified config file
         echo -n ":: Connecting to '${net}'..."
-        
         sudo "${PROG_EXEC[2]}" stop-all
         sudo "${PROG_EXEC[3]}" stop netctl
-        sudo "${PROG_EXEC[0]}" link set "wlp1s0" down
-        
+        sudo "${PROG_EXEC[0]}" link set "${NETDEV}" down
         start=`sudo "${PROG_EXEC[2]}" start "${net}"`
         
         if [ ! -z "${start}" ]; then
@@ -200,23 +154,19 @@ wifi_connect() {
     done
 }
 
-
-
-## Disconnect from the internet using netctl
-wifi_disconnect() {
+# ******************************************************************************
+# Disconnect from the internet using netctl
+wifi_disconnect()
+{
     echo -n ":: Disconnecting wifi..."
     sudo "${PROG_EXEC[2]}" stop-all
     echo "Done."
 }
 
-
-
-## #################################
-## ##### NETWORK DATA VALIDITY #####
-## #################################
-
-## Check if commands exist
-programs_exist() {
+# ******************************************************************************
+# Check if commands exist
+programs_exist()
+{
     for prog in "${PROG_EXEC[@]}"; do
         if [ ! -z "$(hash ${prog} 2>&1)" ]; then
             echo "${PROG_NAME}: '${prog}' command does not exist." 1>&2
@@ -225,29 +175,32 @@ programs_exist() {
     done
 }
 
-
-
-## Check data from network file
-wifi_status() {
-    val=`echo "$1" | sed 's/\..*//'`
-    
+# ******************************************************************************
+# Check data from network file
+is_int()
+{
+    val=`echo "$1" | sed 's/\..*$//g'`
     if [ "${val}" -eq "${val}" ] 2> /dev/null; then
-        addr=`"${PROG_EXEC[0]}" r | grep default | cut -f3 -d' '`
-        ping -q -W 1 -c 1 "${addr}" &> /dev/null
-        
-        if [ $? -eq 0 ]; then
-            return 0
-        fi
+        echo true
+    else
+        echo false
     fi
-    
-    echo "${PROG_NAME}: No internet connection." 1>&2
-    exit 1
 }
 
+# ******************************************************************************
+# Check if signal is connected
+is_connected()
+{
+    addr=`"${PROG_EXEC[0]}" r | grep default | cut -f3 -d' '`
+    ping -q -W 1 -c 1 "${addr}" &> /dev/null
+    if [ $? -eq 0 ]; then
+        echo true
+    else
+        echo "${PROG_NAME}: No internet connection." 1>&2
+        echo false
+    fi
+}
 
-
-## ============
-## Execute Main
-## ============
-
+# ******************************************************************************
+# Execute Main
 main 
