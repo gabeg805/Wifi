@@ -10,4 +10,6 @@ Display wireless network information.
 - netctl
 - iw
 - ip
+- hostname
+- wget
 ```
