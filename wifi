@@ -127,13 +127,13 @@ main()
 
     # Run options
     if [ -n "${INFO}" ]; then
-        print_info
+         print_wifi_info "${IFACE}"
     elif [ -n "${CONNECT}" ]; then
         wifi_connect "${CONNECT}"
     elif [ -n "${DISCONNECT}" ]; then
         wifi_disconnect
     elif [ -n "${SCAN}" ]; then
-        wifi_scan "${IFACE}" "${SCAN}"
+        wifi_scan "${IFACE}" "${KEYWORD}"
     elif [ -n "${LIST}" ]; then
         list_interfaces
     elif [ -n "${PRIVATE}" ]; then
@@ -158,7 +158,7 @@ usage() {
     echo "       Verbose output."
     echo
     echo "    -i, --info"
-    echo "       Print the wifi SSID and signal strength."
+    echo "       Print the wifi SSID and signal strength. Requires '-I'."
     echo
     echo "    -c, --connect <signal>"
     echo "        Connect to a wifi signal."
@@ -166,8 +166,8 @@ usage() {
     echo "    -d, --disconnect"
     echo "       Disconnect from the connected wifi signal."
     echo
-    echo "    -S, --scan [<keyword>]"
-    echo "        Scan for wifi signals."
+    echo "    -s, --scan [<keyword>]"
+    echo "        Scan for wifi signals. Requires '-I'."
     echo
     echo "    -l, --list"
     echo "        List available interfaces."
@@ -195,14 +195,13 @@ usage() {
 
 # ******************************************************************************
 # Print wireless information
-print_info()
+print_wifi_info()
 {
     local iface="${1}"
     if ! is_interface "${iface}"; then
         print_err "Unable to print information: Invalid network interface '${iface}'."
         exit ${EINFO}
     fi
-
     signal=$(get_signal_strength) || exit ${EINFO}
     ssid=$(get_ssid "${iface}") || exit ${EINFO}
     echo "${ssid}: ${signal}%"
@@ -312,7 +311,7 @@ print_public_ip_address()
 get_signal_strength()
 {
     local netfile="/proc/net/wireless"
-    local dbm=$(tail -1 "${netfile}" | awk '{ print $3 }')
+    local dbm=$(tail -1 "${netfile}" | awk '{ print $3 }' | sed 's/\.$//')
     if is_integer "${dbm}"; then
         if ! is_connected; then
             exit ${ESIG}
@@ -354,9 +353,7 @@ get_network_interfaces()
 # Check if signal is connected
 is_connected()
 {
-    local addr=$(ip route | grep default | cut -f3 -d' ')
-
-    ping -q -W 1 -c 1 "${addr}" &> /dev/null
+    wget -q --spider http://google.com
     if [ $? -eq 0 ]; then
         return 0
     fi
