@@ -217,14 +217,15 @@ wifi_connect()
 
     # Look for wifi configuration file
     for net in "${netdir}"/*; do
-        if [ -d "${net}" -o "${net}" != "${name}" ]; then
+        if [ -d "${net}" -o "$(basename "${net}")" != "${name}" ]; then
             continue
         fi
         found=true
         break
     done
+
     if ! ${found}; then
-        print_err "Unable to connect to '{name}'."
+        print_err "Unable to connect to '${name}'."
         exit ${ECON}
     fi
 
