@@ -1,15 +1,21 @@
-# WIFI
+# Wifi
 
-## What is it?
+## Introduction
 
 Display wireless network information.
 
-## Requirements:
+## Requirements
 
-```    
 - netctl
 - iw
 - ip
 - hostname
 - wget
+
+## Usage
+
+For further help or information on what the various options do, run the following.
+
+```
+wifi -h
 ```

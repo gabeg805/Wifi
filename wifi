@@ -1,358 +1,292 @@
 #!/bin/bash
-# ******************************************************************************
+# ------------------------------------------------------------------------------
 # 
-# Name:    wifi
-# Author:  Gabriel Gonzalez
-# Email:   gabeg@bu.edu
-# License: The MIT License (MIT)
+# Name: wifi
+# Author: Gabe Gonzalez
 # 
-# Syntax: wifi [options] [args]
+# Brief: Display wireless network connectivity information.
 # 
-# Description: Display wireless network connectivity information.
-# 
-# Notes: None.
-# 
-# ******************************************************************************
+# ------------------------------------------------------------------------------
 
-# Global variables
-PROG="${0##*/}"
-PROGDIR=$(dirname "$(readlink -f "${0}")")
+##
+# Source utilities.
+##
+. "commandline.sh"
+. "io.sh"
 
-# Options
+##
+# Options.
+##
 VERBOSE=
 
-# Source utility
-. "${PROGDIR}/../lib/bash/util.sh"
+##
+# Exit statuses.
+##
+EXIT_WIFI_INVALID_INTERFACE=10
+EXIT_WIFI_INVALID_CONNECTION_NAME=11
+EXIT_WIFI_CONNECT_FAILED=12
+EXIT_WIFI_NO_CONNECTION=13
 
-# Exit statuses
-EINFO=10
-ESIG=11
-ESIGVAL=12
-ECON=13
-
-# ******************************************************************************
-# Display Wifi information
+##
+# Display Wifi information.
+##
 main()
 {
-    [ $# -eq 0 ] && usage && exit ${ENORM}
-    short="hvic:ds::lpPI:"
-    long="help,verbose,info,connect:,disconnect,scan::,list,private,public,iface:"
-    args=$(getopt -o "${short}" --long "${long}" --name "${PROG}" -- "${@}")
-    [ $? -ne 0 ] && usage && exit ${EGETOPT}
-    eval set -- "${args}"
+    cli_options "-h|--help           |Print program usage." \
+                "-v|--verbose        |Verbose output." \
+                "-c|--connect=signal:|Connect to a wifi signal." \
+                "-d|--disconnect     |Disconnect from the currently connected wifi signal." \
+                "-F|--full-scan      |Scan for wifi signals (full output)." \
+                "-p|--private        |Print your private IP address." \
+                "-P|--public         |Print your public IP address." \
+                "-S|--scan           |Scan for wifi signals (summary output)."
+    if [ $# -eq 0 ]
+    then
+        wifi_info
+    else
+        cli_parse "${@}"
+    fi
 
-    # Options
-    INFO=
-    SCAN=
-    KEYWORD=
-    CONNECT=
-    DISCONNECT=
-    LIST=
-    PRIVATE=
-    PUBLIC=
-    IFACE=
+    local help=$(cli_get "help")
+    local connect=$(cli_get "connect")
+    local disconnect=$(cli_get "disconnect")
+    local fullscan=$(cli_get "full-scan")
+    local private=$(cli_get "private")
+    local public=$(cli_get "public")
+    local scan=$(cli_get "scan")
 
-    # Parse options
-    while true; do
-        case "${1}" in
-            # Print usage
-            -h|--help)
-                usage
-                exit 0
-                ;;
-
-            # Verbose output
-            -v|--verbose)
-                VERBOSE=true
-                ;;
-
-            # Print SSID and signal strength
-            -i|--info)
-                check_multi_arg "INFO"
-                INFO=true
-                ;;
-
-            # Connect to a wifi network
-            -c|--connect)
-                check_multi_arg "CONNECT"
-                shift
-                CONNECT="${1}"
-                ;;
-
-            # Disconnect from the currently connected wifi network
-            -d|--disconnect)
-                check_multi_arg "DISCONNECT"
-                DISCONNECT=true
-                ;;
-
-            # Scan for wifi networks
-            -s|--scan)
-                check_multi_arg "SCAN"
-                shift
-                SCAN=true
-                KEYWORD="${1}"
-                ;;
-
-            # List interfaces
-            -l|--list)
-                check_multi_arg "LIST"
-                LIST=true
-                ;;
-
-            # Print private IP address
-            -p|--private)
-                check_multi_arg "PRIVATE"
-                PRIVATE=true
-                ;;
-
-            # Print public IP address
-            -P|--public)
-                check_multi_arg "PUBLIC"
-                PUBLIC=true
-                ;;
-
-            # Specify interface to use
-            -I|--iface)
-                shift
-                IFACE="${1}"
-                ;;
-
-            # End of options
-            --)
-                break
-                ;;
-        esac
-        shift
-    done
-
-    # Run options
-    if [ -n "${INFO}" ]; then
-         print_wifi_info "${IFACE}"
-    elif [ -n "${CONNECT}" ]; then
-        wifi_connect "${CONNECT}"
-    elif [ -n "${DISCONNECT}" ]; then
+    if [ -n "${help}" ]
+    then
+        cli_usage
+    elif [ -n "${info}" ]
+    then
+         wifi_info
+    elif [ -n "${connect}" ]
+    then
+        wifi_connect "${connect}"
+    elif [ -n "${disconnect}" ]
+    then
         wifi_disconnect
-    elif [ -n "${SCAN}" ]; then
-        wifi_scan "${IFACE}" "${KEYWORD}"
-    elif [ -n "${LIST}" ]; then
-        list_interfaces
-    elif [ -n "${PRIVATE}" ]; then
-        print_private_ip_address
-    elif [ -n "${PUBLIC}" ]; then
-        print_public_ip_address
+    elif [ -n "${scan}" ]
+    then
+        wifi_scan_full
+    elif [ -n "${private}" ]
+    then
+        wifi_private
+    elif [ -n "${public}" ]
+    then
+        wifi_public
+    elif [ -n "${scan}" ]
+    then
+        wifi_scan_summary
     else
         :
     fi
+    exit $?
 }
 
-# ******************************************************************************
-# Print program usage
-usage() {
-    echo "Usage: ${PROG} [options] <arguments>"
-    echo
-    echo "Options:"
-    echo "    -h, --help"
-    echo "       Print program usage."
-    echo
-    echo "    -v, --verbose"
-    echo "       Verbose output."
-    echo
-    echo "    -i, --info"
-    echo "       Print the wifi SSID and signal strength. Requires '-I'."
-    echo
-    echo "    -c, --connect <signal>"
-    echo "        Connect to a wifi signal."
-    echo
-    echo "    -d, --disconnect"
-    echo "       Disconnect from the connected wifi signal."
-    echo
-    echo "    -s, --scan [<keyword>]"
-    echo "        Scan for wifi signals. Requires '-I'."
-    echo
-    echo "    -l, --list"
-    echo "        List available interfaces."
-    echo
-    echo "    -p, --private"
-    echo "        Print private ip address(es)."
-    echo
-    echo "    -P, --public"
-    echo "        Print public ip address."
-    echo
-    echo "    -I, --iface <iface>"
-    echo "        Specify interface to use (e.g. 'wlan0')."
-    echo
-    echo "Arguments:"
-    echo "    <signal>"
-    echo "        Wifi file in /etc/netctl to connect to."
-    echo
-    echo "    <keyword>"
-    echo "        Specific keyword to search in scan output."
-    echo
-    echo "    <iface>"
-    echo "        A network interface."
-    echo
-}
-
-# ******************************************************************************
-# Print wireless information
-print_wifi_info()
+##
+# Print wifi information.
+##
+wifi_info()
 {
-    local iface="${1}"
-    if ! is_interface "${iface}"; then
-        print_err "Unable to print information: Invalid network interface '${iface}'."
-        exit ${EINFO}
-    fi
-    signal=$(get_signal_strength) || exit ${EINFO}
-    ssid=$(get_ssid "${iface}") || exit ${EINFO}
+    local iface=$(wifi_interface_get)
+    local ssid=
+    local signal=
+    wifi_interface_verify "${iface}" || return $?
+    ssid=$(wifi_info_get_ssid "${iface}")
+    signal=$(wifi_info_get_signal "${iface}")
     echo "${ssid}: ${signal}%"
+    return 0
 }
 
-# ******************************************************************************
-# Connect to a wifi network
+##
+# Connect to a wifi network.
+##
 wifi_connect()
 {
     local name="${1}"
-    local netdir="/etc/netctl"
-    local found=false
-
-    # Look for wifi configuration file
-    for net in "${netdir}"/*; do
-        if [ -d "${net}" -o "$(basename "${net}")" != "${name}" ]; then
-            continue
-        fi
-        found=true
-        break
-    done
-
-    if ! ${found}; then
-        print_err "Unable to connect to '${name}'."
-        exit ${ECON}
-    fi
-
-    # Connect to wifi
-    print_info "Attempting to connect to '${name}'..."
+    wifi_connect_verify "${name}" || return $?
+    echo "Connecting to '${name}'."
     sudo netctl stop-all
     sudo netctl start "${name}"
-
-    if [ $? -eq 0 ]; then
-        print_info "Connected."
-        exit ${ENORM}
-    else
-        print_err "Failed."
-        exit ${ECON}
+    if [ $? -ne 0 ]
+    then
+        print_err "Failed to connect."
+        return ${EXIT_WIFI_CONNECT_FAILED}
     fi
+    return 0
 }
 
-# ******************************************************************************
-# Disconnect from wifi
+##
+# Disconnect from the wifi network.
+##
 wifi_disconnect()
 {
-    print_info "Disconnecting wifi..."
+    echo "Disconnecting wifi."
     sudo netctl stop-all
-    print_info "Done."
+    return $?
 }
 
-# ******************************************************************************
-# Scan for wireless networks
-wifi_scan()
+##
+# Scan for wireless networks (full output).
+##
+wifi_scan_full()
 {
-    local iface="${1}"
-    if ! is_interface "${iface}"; then
-        print_err "Unable to scan wireless networks: Invalid network interface '${iface}'."
-        exit ${ESCAN}
-    fi
-
-    local scan="${2}"
-    case "${scan}" in
-        "") search="signal|SSID|$" ;;
-        *) search="${scan}" ;;
-    esac
-    
-    print_info "Scanning for wireless networks..."
-    sudo iw dev "${iface}" scan \
-        | grep --color=always -E "${search}"
+    sudo iw dev "${iface}" scan
+    return $?
 }
 
-# ******************************************************************************
-# List network interfaces
-list_interfaces()
+##
+# Scan for wireless networks (summary output).
+##
+wifi_scan_summary()
 {
-    print_info "Listing network interfaces..."
-    local iface=
-    for iface in $(get_network_interfaces); do
-        echo "${iface}"
+    local iface=$(wifi_interface_get)
+    wifi_interface_verify "${iface}" || return $?
+    echo "Scanning for wireless networks."
+    local IFS=$'\n'
+    local line=
+    local info=()
+    for line in $(wifi_scan_full)
+    do
+        if [ "${line:1:4}" == "SSID" ]
+        then
+            info[0]="${line:7}"
+        elif [ "${line:1:6}" == "signal" ]
+        then
+            info[1]="${line:9}"
+        elif [ "${line:1:9}" == "last seen" ]
+        then
+            info[2]="${line:12}"
+        elif [ "${line:1:4}" == "freq" ]
+        then
+            info[3]="${line:7} MHz"
+        else
+            continue
+        fi
+        if [ ${#info[@]} -eq 4 ]
+        then
+            echo
+            echo "SSID      : ${info[0]}"
+            echo "Strength  : ${info[1]}"
+            echo "Last Seen : ${info[2]}"
+            echo "Frequency : ${info[3]}"
+            info=()
+        fi
     done
+    return 0
 }
 
-# ******************************************************************************
-# Print private ip address
-print_private_ip_address()
+##
+# Print your private IP address.
+##
+wifi_private()
 {
-    print_info "Displaying private IP address(es)..."
+    if ! wifi_is_connected
+    then
+        print_err "No network connection."
+        return ${EXIT_WIFI_NO_CONNECTION}
+    fi
+    echo "Private IP address:"
     local IFS=$' \n'
     local ip=
-    for ip in $(hostname -i); do
-        echo "${ip}"
+    for ip in $(hostname -i)
+    do
+        echo "* ${ip}"
     done
+    return 0
 }
 
-# ******************************************************************************
-# Print public ip address
-print_public_ip_address()
+##
+# Print your public IP address.
+##
+wifi_public()
 {
-    print_info "Displaying public IP address..."
+    echo "Public IP address:"
     wget http://checkip.dyndns.org/ -O - -o /dev/null \
-        | cut -f2 -d':' \
-        | cut -f1 -d'<' \
-        | tr -d ' '
+        | perl -pe 's/^.*?: (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})<.*/\*\ \1/'
+    return $?
 }
 
-# ******************************************************************************
-# Return wifi signal strength
-get_signal_strength()
+##
+# Return the wifi SSID.
+##
+wifi_info_get_ssid()
 {
-    local netfile="/proc/net/wireless"
-    local dbm=$(tail -1 "${netfile}" | awk '{ print $3 }' | sed 's/\.$//')
-    if is_integer "${dbm}"; then
-        if ! is_connected; then
-            exit ${ESIG}
-        fi
-    else
-        exit ${ESIGVAL}
-    fi
-
-    local signal=$(echo "scale=2; ${dbm}/70*100" | bc)
-    echo "${signal} / 1" | bc
+    iw dev "${1}" link | grep SSID | sed 's/^[ \t]*SSID: //'
+    return $?
 }
 
-# ******************************************************************************
-# Return wifi SSID
-get_ssid()
+##
+# Return the wifi signal strength.
+##
+wifi_info_get_signal()
 {
     local iface="${1}"
-    iw dev "${iface}" link \
-        | grep SSID \
-        | cut -f2 -d':' \
-        | sed 's/^[ \t]*//'
+    local netfile="/proc/net/wireless"
+    local dbm=$(grep "${iface}" "${netfile}" | awk '{ print $3 }')
+    local signal=$(echo "scale=2; ${dbm}/70*100" | bc)
+    echo "${signal} / 1" | bc
+    return $?
 }
 
-# ******************************************************************************
-# Return list of network interfaces
-get_network_interfaces()
+##
+# Verify that this will be able to connect and that the wifi configuration file
+# exists.
+##
+wifi_connect_verify()
+{
+    local name="${1}"
+    if [ ! -f "/etc/netctl/${name}" ]
+    then
+        print_err "Unable to connect to '${name}'."
+        return ${EXIT_WIFI_INVALID_CONNECTION_NAME}
+    fi
+    return 0
+}
+
+##
+# Return the wifi interface.
+##
+wifi_interface_get()
 {
     local IFS=$'\n'
     local line=
-    for line in $(ip link show); do
-        if ! is_integer "${line:0:1}"; then
-            continue
+    for line in $(ip link show)
+    do
+        local IFS=$':'
+        local columns=(${line})
+        local iface="${columns[1]// /}"
+        if [ "${iface:0:1}" == "w" ]
+        then
+            echo "${iface}"
+            return 0
         fi
-        echo "${line}" | awk '{ print $2 }' | tr -d ':'
     done
+    return 1
 }
 
-# ******************************************************************************
-# Check if signal is connected
-is_connected()
+##
+# Verify the wifi interface.
+# 
+# Example: wlan0, wlp1s0, etc.
+##
+wifi_interface_verify()
+{
+    local iface="${1}"
+    if [ -z "${iface}" -o "$(wifi_interface_get)" != "${iface}" ]
+    then
+        print_err "Invalid network interface '${iface}'."
+        return ${EXIT_WIFI_INVALID_INTERFACE}
+    fi
+    return 0
+}
+
+##
+# Check if wifi network is connected.
+##
+wifi_is_connected()
 {
     wget -q --spider http://google.com
     if [ $? -eq 0 ]; then
@@ -361,97 +295,7 @@ is_connected()
     return 1
 }
 
-# ******************************************************************************
-# Check if is network interface
-is_interface()
-{
-    local input="${1}"
-    if [ -z "${input}" ]; then
-        return 1
-    fi
-
-    local iface=
-    for iface in $(get_network_interfaces); do
-        if [ "${iface}" == "${input}" ]; then
-            return 0
-        fi
-    done
-    return 1
-}
-
-# ******************************************************************************
-# Check if multiple arguments are used when they should not be
-check_multi_arg()
-{
-    case "${1}" in
-        INFO)
-            if [ -n "${SCAN}" -o -n "${CONNECT}" -o -n "${DISCONNECT}" \
-                -o -n "${LIST}" -o -n "${PRIVATE}" -o -n "${PUBLIC}" ]
-            then
-                print_err "Unable to initialize script: Must specify only one option."
-                exit ${EARG}
-            fi
-            ;;
-
-        SCAN)
-            if [ -n "${INFO}" -o -n "${CONNECT}" -o -n "${DISCONNECT}" \
-                -o -n "${LIST}" -o -n "${PRIVATE}" -o -n "${PUBLIC}" ]
-            then
-                print_err "Unable to initialize script: Must specify only one option."
-                exit ${EARG}
-            fi
-            ;;
-
-        CONNECT)
-            if [ -n "${INFO}" -o -n "${SCAN}" -o -n "${DISCONNECT}" \
-                -o -n "${LIST}" -o -n "${PRIVATE}" -o -n "${PUBLIC}" ]
-            then
-                print_err "Unable to initialize script: Must specify only one option."
-                exit ${EARG}
-            fi
-            ;;
-
-        DISCONNECT)
-            if [ -n "${INFO}" -o -n "${SCAN}" -o -n "${CONNECT}" \
-                -o -n "${LIST}" -o -n "${PRIVATE}" -o -n "${PUBLIC}" ]
-            then
-                print_err "Unable to initialize script: Must specify only one option."
-                exit ${EARG}
-            fi
-            ;;
-
-        LIST)
-            if [ -n "${INFO}" -o -n "${SCAN}" -o -n "${CONNECT}" \
-                -o -n "${CONNECT}" -o -n "${PRIVATE}" -o -n "${PUBLIC}" ]
-            then
-                print_err "Unable to initialize script: Must specify only one option."
-                exit ${EARG}
-            fi
-            ;;
-
-        PRIVATE)
-            if [ -n "${INFO}" -o -n "${SCAN}" -o -n "${CONNECT}" \
-                -o -n "${CONNECT}" -o -n "${LIST}" -o -n "${PUBLIC}" ]
-            then
-                print_err "Unable to initialize script: Must specify only one option."
-                exit ${EARG}
-            fi
-            ;;
-
-        PUBLIC)
-            if [ -n "${INFO}" -o -n "${SCAN}" -o -n "${CONNECT}" \
-                -o -n "${CONNECT}" -o -n "${LIST}" -o -n "${PRIVATE}" ]
-            then
-                print_err "Unable to initialize script: Must specify only one option."
-                exit ${EARG}
-            fi
-            ;;
-
-        *)
-            ;;
-    esac
-}
-
-# ******************************************************************************
-# Run script
+##
+# Run script.
+##
 main "${@}"
