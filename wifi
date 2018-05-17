@@ -36,13 +36,16 @@ main()
                 "-v|--verbose        |Verbose output." \
                 "-c|--connect=signal:|Connect to a wifi signal." \
                 "-d|--disconnect     |Disconnect from the currently connected wifi signal." \
+                "-i|--info           |Print IP information." \
                 "-F|--full-scan      |Scan for wifi signals (full output)." \
                 "-p|--private        |Print your private IP address." \
                 "-P|--public         |Print your public IP address." \
+                "-s|--strength       |Print the signal strength to the currently connected network." \
                 "-S|--scan           |Scan for wifi signals (summary output)."
     if [ $# -eq 0 ]
     then
-        wifi_info
+        wifi_strength
+        exit $?
     else
         cli_parse "${@}"
     fi
@@ -50,52 +53,70 @@ main()
     local help=$(cli_get "help")
     local connect=$(cli_get "connect")
     local disconnect=$(cli_get "disconnect")
+    local info=$(cli_get "info")
     local fullscan=$(cli_get "full-scan")
     local private=$(cli_get "private")
     local public=$(cli_get "public")
+    local strength=$(cli_get "strength")
     local scan=$(cli_get "scan")
 
     if [ -n "${help}" ]
     then
         cli_usage
-    elif [ -n "${info}" ]
-    then
-         wifi_info
     elif [ -n "${connect}" ]
     then
         wifi_connect "${connect}"
-    elif [ -n "${disconnect}" ]
-    then
-        wifi_disconnect
-    elif [ -n "${scan}" ]
-    then
-        wifi_scan_full
-    elif [ -n "${private}" ]
-    then
-        wifi_private
-    elif [ -n "${public}" ]
-    then
-        wifi_public
-    elif [ -n "${scan}" ]
-    then
-        wifi_scan_summary
     else
-        :
+        if ! wifi_is_connected
+        then
+            print_err "No network connection."
+            exit ${EXIT_WIFI_NO_CONNECTION}
+        fi
+
+        if [ -n "${disconnect}" ]
+        then
+            wifi_disconnect
+        elif [ -n "${info}" ]
+        then
+            wifi_info
+        elif [ -n "${scan}" ]
+        then
+            wifi_scan_full
+        elif [ -n "${private}" ]
+        then
+            wifi_private
+        elif [ -n "${public}" ]
+        then
+            wifi_public
+        elif [ -n "${strength}" ]
+        then
+            wifi_strength
+        elif [ -n "${scan}" ]
+        then
+            wifi_scan_summary
+        else
+            :
+        fi
     fi
     exit $?
 }
 
 ##
-# Print wifi information.
+# Print the signal strength to the currently connected network.
 ##
-wifi_info()
+wifi_strength()
 {
+    if ! wifi_is_connected
+    then
+        print_err "No network connection."
+        return ${EXIT_WIFI_NO_CONNECTION}
+    fi
     local iface=$(wifi_interface_get)
     local ssid=
     local signal=
     wifi_interface_verify "${iface}" || return $?
-    ssid=$(wifi_info_get_ssid "${iface}")
-    signal=$(wifi_info_get_signal "${iface}")
+    ssid=$(wifi_get_ssid "${iface}")
+    signal=$(wifi_get_signal "${iface}")
     echo "${ssid}: ${signal}%"
     return 0
 }
@@ -125,6 +146,56 @@ wifi_disconnect()
 {
     echo "Disconnecting wifi."
     sudo netctl stop-all
+    return $?
+}
+
+##
+# Print IP information such as ISP, services, city, region, and country.
+##
+wifi_info()
+{
+    local outputfile="/tmp/${PROJECT}"
+    local ipv4=$(wget https://v4.ifconfig.co -O - -o /dev/null)
+    wget https://whatismyipaddress.com/ip/${ipv4} -O "${outputfile}" \
+         -o /dev/null
+    local isp=$(grep 'ISP:' "${outputfile}" | sed 's/<[^>]*>//g')
+    local services=$(grep 'Services:' "${outputfile}" | sed 's/<[^>]*>//g')
+    local city=$(grep 'City:' "${outputfile}" | sed 's/<[^>]*>//g')
+    local region=$(grep 'Region:' "${outputfile}" | sed 's/<[^>]*>//g')
+    local country=$(grep 'Country:' "${outputfile}" | sed 's/<[^>]*>//g')
+    rm -f "${outputfile}"
+    echo "IPv4     : ${ipv4}"
+    echo "ISP      : ${isp##*:}"
+    echo "Services : ${services##*:}"
+    echo "City     : ${city##*:}"
+    echo "Region   : ${region##*:}"
+    echo "Country  : ${country##*:}"
+}
+
+##
+# Print your private IP address.
+##
+wifi_private()
+{
+    echo "Private IP address:"
+    local IFS=$' \n'
+    local ip=
+    for ip in $(hostname -i)
+    do
+        echo "* ${ip}"
+    done
+    return 0
+}
+
+##
+# Print your public IP address.
+##
+wifi_public()
+{
+    echo "Public IP address:"
+    wget https://ifconfig.co -O - -o /dev/null
+    # wget http://checkip.dyndns.org -O - -o /dev/null \
+    #     | perl -pe 's/^.*?: (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})<.*/\*\ \1/'
     return $?
 }
 
@@ -179,40 +250,9 @@ wifi_scan_summary()
 }
 
 ##
-# Print your private IP address.
-##
-wifi_private()
-{
-    if ! wifi_is_connected
-    then
-        print_err "No network connection."
-        return ${EXIT_WIFI_NO_CONNECTION}
-    fi
-    echo "Private IP address:"
-    local IFS=$' \n'
-    local ip=
-    for ip in $(hostname -i)
-    do
-        echo "* ${ip}"
-    done
-    return 0
-}
-
-##
-# Print your public IP address.
-##
-wifi_public()
-{
-    echo "Public IP address:"
-    wget http://checkip.dyndns.org/ -O - -o /dev/null \
-        | perl -pe 's/^.*?: (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})<.*/\*\ \1/'
-    return $?
-}
-
-##
 # Return the wifi SSID.
 ##
-wifi_info_get_ssid()
+wifi_get_ssid()
 {
     iw dev "${1}" link | grep SSID | sed 's/^[ \t]*SSID: //'
     return $?
@@ -221,7 +261,7 @@ wifi_info_get_ssid()
 ##
 # Return the wifi signal strength.
 ##
-wifi_info_get_signal()
+wifi_get_signal()
 {
     local iface="${1}"
     local netfile="/proc/net/wireless"
