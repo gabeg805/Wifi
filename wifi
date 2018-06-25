@@ -416,8 +416,10 @@ wifi_interface_verify()
 ##
 wifi_is_connected()
 {
-    wget -q --tries=3 --spider http://google.com
-    if [ $? -eq 0 ]; then
+    wget -q --tries=3 --dns-timeout=5 --connect-timeout=5 \
+         --spider http://google.com
+    if [ $? -eq 0 ]
+    then
         return 0
     fi
     return 1
