@@ -9,96 +9,81 @@
 # ------------------------------------------------------------------------------
 
 ##
-# Source utilities.
+# Program name.
 ##
-. "io.sh"
+PROJECT="${0##*/}"
 
 ##
 # Options.
 ##
-VERBOSE=true
 CONNECT=
 DISCONNECT=
 INFO=
 FULLSCAN=
 PRIVATE=
 PUBLIC=
-STRENGTH=
 SCAN=
 
 ##
 # Exit statuses.
 ##
-EXIT_NO_OPT_ENTERED=10
-EXIT_WIFI_INVALID_INTERFACE=11
-EXIT_WIFI_INVALID_CONNECTION_NAME=12
-EXIT_WIFI_CONNECT_FAILED=13
-EXIT_WIFI_NO_CONNECTION=14
+EXIT_WIFI_NO_CONNECTION=11
+EXIT_WIFI_INVALID_INTERFACE=12
+EXIT_WIFI_INVALID_CONNECTION_NAME=13
+EXIT_WIFI_CONNECT_FAILED=14
 
 ##
 # Display Wifi information.
 ##
 main()
 {
-    local short="hvc:diFpPsS"
-    local long="help,verbose,connect:,disconnect,info,full-scan,private,public,strength,scan"
     if [ $# -eq 0 ]
     then
         wifi_strength
-        exit $?
+        return $?
     fi
 
     # Parse options
-    cli_parse "${PROJECT}" "${short}" "${long}" "${@}" 
+    local short="hc:diFpPS"
+    local long="help,connect:,disconnect,info,full-scan,private,public,scan"
+    local args=$(getopt -o "${short}" --long "${long}" --name "${PROJECT}" \
+                        -- "${@}")
+    if [ $? -ne 0 ]
+    then
+        usage
+        return 1
+    fi
+    eval set -- "${args}"
+
     while true
     do
         case "${1}" in
             -h|--help)
                 usage
-                exit 0
+                return 0
                 ;;
-
-            -v|--verbose)
-                VERBOSE=true
-                ;;
-
             -c|--connect)
                 shift
                 CONNECT="${1}"
                 ;;
-
             -d|--disconnect)
                 DISCONNECT=true
                 ;;
-
             -i|--info)
                 INFO=true
                 ;;
-
             -F|--full-scan)
                 FULLSCAN=true
                 ;;
-
             -p|--private)
                 PRIVATE=true
                 ;;
-
             -P|--public)
                 PUBLIC=true
                 ;;
-
-            -s|--strength)
-                STRENGTH=true
-                ;;
-
             -S|--scan)
                 SCAN=true
                 ;;
-
-            --)
-                break
-                ;;
-
             *)
                 break
                 ;;
@@ -120,8 +105,8 @@ main()
         # Run checks
         if ! wifi_is_connected
         then
-            print_err "No network connection."
-            exit ${EXIT_WIFI_NO_CONNECTION}
+            echo "${PROJECT}: No network connection." 1>&2
+            return ${EXIT_WIFI_NO_CONNECTION}
         fi
 
         # Run more options
@@ -137,16 +122,12 @@ main()
         elif [ -n "${PUBLIC}" ]
         then
             wifi_public
-        elif [ -n "${STRENGTH}" ]
-        then
-            wifi_strength
         else
-            usage
-            exit ${EXIT_NO_OPT_ENTERED}
+            :
         fi
     fi
 
-    exit $?
+    return $?
 }
 
 ##
@@ -159,9 +140,6 @@ usage()
     echo "Options:"
     echo "    -h, --help"
     echo "        Print program usage."
-    echo 
-    echo "    -v, --verbose"
-    echo "        Verbose output."
     echo 
     echo "    -c, --connect=<signal>"
     echo "        Connect to a wifi network."
@@ -181,9 +159,6 @@ usage()
     echo "    -P, --public"
     echo "        Print your public IP address."
     echo 
-    echo "    -s, --strength"
-    echo "        Print the signal strength to the currently connected network."
-    echo 
     echo "    -S, --scan"
     echo "        Scan for wifi signals (summary output)."
 }
@@ -195,7 +170,7 @@ wifi_strength()
 {
     if ! wifi_is_connected
     then
-        print_msg "No network connection."
+        echo ":: No network connection."
         return ${EXIT_WIFI_NO_CONNECTION}
     fi
     local iface=$(wifi_interface_get)
@@ -220,7 +195,7 @@ wifi_connect()
     sudo netctl start "${name}"
     if [ $? -ne 0 ]
     then
-        print_err "Failed to connect."
+        echo "${PROJECT}: Failed to connect." 1>&2
         return ${EXIT_WIFI_CONNECT_FAILED}
     fi
     return 0
@@ -231,7 +206,7 @@ wifi_connect()
 ##
 wifi_disconnect()
 {
-    echo "Disconnecting wifi."
+    echo ":: Disconnecting wifi."
     sudo netctl stop-all
     return $?
 }
@@ -368,7 +343,7 @@ wifi_connect_verify()
     local name="${1}"
     if [ ! -f "/etc/netctl/${name}" ]
     then
-        print_err "Unable to connect to '${name}'."
+        echo "${PROJECT}: Unable to connect to '${name}'." 1>&2
         return ${EXIT_WIFI_INVALID_CONNECTION_NAME}
     fi
     return 0
@@ -405,7 +380,7 @@ wifi_interface_verify()
     local iface="${1}"
     if [ -z "${iface}" -o "$(wifi_interface_get)" != "${iface}" ]
     then
-        print_err "Invalid network interface '${iface}'."
+        echo "${PROJECT}: Invalid network interface '${iface}'." 1>&2
         return ${EXIT_WIFI_INVALID_INTERFACE}
     fi
     return 0
