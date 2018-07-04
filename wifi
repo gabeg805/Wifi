@@ -43,11 +43,14 @@ main()
         return $?
     fi
 
-    # Parse options
+	# Options
     local short="hc:diFpPS"
     local long="help,connect:,disconnect,info,full-scan,private,public,scan"
-    local args=$(getopt -o "${short}" --long "${long}" --name "${PROJECT}" \
-                        -- "${@}")
+	local args=
+
+    # Parse options
+    args=$(getopt -o "${short}" --long "${long}" --name "${PROJECT}" \
+				-- "${@}")
     if [ $? -ne 0 ]
     then
         usage
