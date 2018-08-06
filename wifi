@@ -394,8 +394,10 @@ wifi_interface_verify()
 ##
 wifi_is_connected()
 {
-    wget -q --tries=5 --dns-timeout=5 --connect-timeout=5 \
-         --spider http://google.com
+	local gateway=$(ip route | grep default | cut -f3 -d' ')
+	ping -q -w 1 -c 1 "${gateway}" &> /dev/null
+    #wget -q --tries=5 --dns-timeout=5 --connect-timeout=5 \
+    #     --spider http://google.com
     if [ $? -eq 0 ]
     then
         return 0
