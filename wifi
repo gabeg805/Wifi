@@ -102,6 +102,9 @@ main()
     if [ -n "${CONNECT}" ]
     then
         wifi_connect "${CONNECT}"
+	elif [ -n "${DISCONNECT}" ]
+	then
+		wifi_disconnect
     elif [ -n "${FULLSCAN}" ]
     then
         wifi_scan_full
@@ -117,10 +120,7 @@ main()
         fi
 
         # Run more options
-        if [ -n "${DISCONNECT}" ]
-        then
-            wifi_disconnect
-        elif [ -n "${INFO}" ]
+        if [ -n "${INFO}" ]
         then
             wifi_info
         elif [ -n "${LIST}" ]
@@ -310,7 +310,7 @@ wifi_public()
 ##
 wifi_scan_full()
 {
-    local iface=$(wifi_interface_get)
+    local iface=$(wifi_interface_get wifi)
 	sudo ip link set "${iface}" up
     sudo iw dev "${iface}" scan
     return $?
@@ -321,12 +321,13 @@ wifi_scan_full()
 ##
 wifi_scan_summary()
 {
-    local iface=$(wifi_interface_get)
+    local iface=$(wifi_interface_get wifi)
     wifi_interface_verify "${iface}" || return $?
     echo "Scanning for wireless networks."
     local IFS=$'\n'
     local line=
     local info=()
+
     for line in $(wifi_scan_full)
     do
         if [ "${line:1:4}" == "SSID" ]
@@ -417,22 +418,31 @@ wifi_connect_verify()
 ##
 wifi_interface_get()
 {
+	local input="${1}"
     local IFS=$'\n'
     local line=
+	local get=
+
+	case "${input}" in
+		"wifi") get="w" ;;
+		"wired") get="e" ;;
+		*) ;;
+	esac
 
     for line in $(ip link show)
     do
+        local IFS=$': '
+        local columns=(${line})
+        local iface="${columns[1]// /}"
+
 		if ! [[ "${line:0:1}" =~ [0-9] ]] \
-			|| [ "${line:3:2}" == "lo" -o "${line:3:3}" == "tun" ]
+			|| [ "${columns[1]:0:2}" == "lo" -o "${columns[1]:0:3}" == "tun" ]
 		then
 			continue
 		fi
 
-        local IFS=$':'
-        local columns=(${line})
-        local iface="${columns[1]// /}"
-
-        if [ "${iface:0:1}" == "w" -o "${iface:0:1}" == "e" ]
+        if [ -n "${get}" -a "${iface:0:1}" == "${get}" ] \
+			|| [ -z "${get}" -a $(echo "${columns[2]}" | grep -c UP) -gt 0 ]
         then
             echo "${iface}"
             return 0
