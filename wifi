@@ -421,7 +421,7 @@ wifi_interface_get()
 	local input="${1}"
     local IFS=$'\n'
     local line=
-	local get="w"
+	local get=""
 
 	case "${input}" in
 		"wifi") get="w" ;;
