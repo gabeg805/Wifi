@@ -38,106 +38,106 @@ EXIT_WIFI_CONNECT_FAILED=14
 ##
 main()
 {
-    if [ $# -eq 0 ]
-    then
-        wifi_strength
-        return $?
-    fi
+	if [ $# -eq 0 ]
+	then
+		wifi_strength
+		return $?
+	fi
 
 	# Options
-    local short="hc:dilFpPS"
-    local long="help,connect:,disconnect,info,list,full-scan,private,public,scan"
+	local short="hc:dilFpPS"
+	local long="help,connect:,disconnect,info,list,full-scan,private,public,scan"
 	local args=
 
-    # Parse options
-    args=$(getopt -o "${short}" --long "${long}" --name "${PROJECT}" \
+	# Parse options
+	args=$(getopt -o "${short}" --long "${long}" --name "${PROJECT}" \
 				-- "${@}")
-    if [ $? -ne 0 ]
-    then
-        usage
-        return 1
-    fi
-    eval set -- "${args}"
+	if [ $? -ne 0 ]
+	then
+		usage
+		return 1
+	fi
+	eval set -- "${args}"
 
-    while true
-    do
-        case "${1}" in
-            -h|--help)
-                usage
-                return 0
-                ;;
-            -c|--connect)
-                shift
-                CONNECT="${1}"
-                ;;
-            -d|--disconnect)
-                DISCONNECT=true
-                ;;
-            -i|--info)
-                INFO=true
-                ;;
-            -l|--list)
-                LIST=true
-                ;;
-            -F|--full-scan)
-                FULLSCAN=true
-                ;;
-            -p|--private)
-                PRIVATE=true
-                ;;
-            -P|--public)
-                PUBLIC=true
-                ;;
-            -S|--scan)
-                SCAN=true
-                ;;
-            *)
-                break
-                ;;
-        esac
-        shift
-    done
+	while true
+	do
+		case "${1}" in
+			-h|--help)
+				usage
+				return 0
+				;;
+			-c|--connect)
+				shift
+				CONNECT="${1}"
+				;;
+			-d|--disconnect)
+				DISCONNECT=true
+				;;
+			-i|--info)
+				INFO=true
+				;;
+			-l|--list)
+				LIST=true
+				;;
+			-F|--full-scan)
+				FULLSCAN=true
+				;;
+			-p|--private)
+				PRIVATE=true
+				;;
+			-P|--public)
+				PUBLIC=true
+				;;
+			-S|--scan)
+				SCAN=true
+				;;
+			*)
+				break
+				;;
+		esac
+		shift
+	done
 
-    # Run entered options
-    if [ -n "${CONNECT}" ]
-    then
-        wifi_connect "${CONNECT}"
+	# Run entered options
+	if [ -n "${CONNECT}" ]
+	then
+		wifi_connect "${CONNECT}"
 	elif [ -n "${DISCONNECT}" ]
 	then
 		wifi_disconnect
-    elif [ -n "${FULLSCAN}" ]
-    then
-        wifi_scan_full
-    elif [ -n "${SCAN}" ]
-    then
-        wifi_scan_summary
-    else
-        # Run checks
-        if ! wifi_is_connected
-        then
-            echo "${PROJECT}: No network connection." 1>&2
-            return ${EXIT_WIFI_NO_CONNECTION}
-        fi
+	elif [ -n "${FULLSCAN}" ]
+	then
+		wifi_scan_full
+	elif [ -n "${SCAN}" ]
+	then
+		wifi_scan_summary
+	else
+		# Run checks
+		if ! wifi_is_connected
+		then
+			echo "${PROJECT}: No network connection." 1>&2
+			return ${EXIT_WIFI_NO_CONNECTION}
+		fi
 
-        # Run more options
-        if [ -n "${INFO}" ]
-        then
-            wifi_info
-        elif [ -n "${LIST}" ]
-        then
-            wifi_list
-        elif [ -n "${PRIVATE}" ]
-        then
-            wifi_private
-        elif [ -n "${PUBLIC}" ]
-        then
-            wifi_public
-        else
-            :
-        fi
-    fi
+		# Run more options
+		if [ -n "${INFO}" ]
+		then
+			wifi_info
+		elif [ -n "${LIST}" ]
+		then
+			wifi_list
+		elif [ -n "${PRIVATE}" ]
+		then
+			wifi_private
+		elif [ -n "${PUBLIC}" ]
+		then
+			wifi_public
+		else
+			:
+		fi
+	fi
 
-    return $?
+	return $?
 }
 
 ##
@@ -145,35 +145,35 @@ main()
 ##
 usage()
 {
-    echo "Usage: ${PROJECT} [options]"
-    echo 
-    echo "Options:"
-    echo "    -h, --help"
-    echo "        Print program usage."
-    echo 
-    echo "    -c, --connect=<name>"
-    echo "        Connect to a wifi network."
-    echo 
-    echo "    -d, --disconnect"
-    echo "        Disconnect from the currently connected wifi network."
-    echo 
-    echo "    -i, --info"
-    echo "        Print IP information."
-    echo 
-    echo "    -l, --list"
-    echo "        List all saved networks."
-    echo 
-    echo "    -F, --full-scan"
-    echo "        Scan for wifi signals (full output)."
-    echo 
-    echo "    -p, --private"
-    echo "        Print your private IP address."
-    echo 
-    echo "    -P, --public"
-    echo "        Print your public IP address."
-    echo 
-    echo "    -S, --scan"
-    echo "        Scan for wifi signals (summary output)."
+	echo "Usage: ${PROJECT} [options]"
+	echo 
+	echo "Options:"
+	echo "	  -h, --help"
+	echo "		  Print program usage."
+	echo 
+	echo "	  -c, --connect=<name>"
+	echo "		  Connect to a wifi network."
+	echo 
+	echo "	  -d, --disconnect"
+	echo "		  Disconnect from the currently connected wifi network."
+	echo 
+	echo "	  -i, --info"
+	echo "		  Print IP information."
+	echo 
+	echo "	  -l, --list"
+	echo "		  List all saved networks."
+	echo 
+	echo "	  -F, --full-scan"
+	echo "		  Scan for wifi signals (full output)."
+	echo 
+	echo "	  -p, --private"
+	echo "		  Print your private IP address."
+	echo 
+	echo "	  -P, --public"
+	echo "		  Print your public IP address."
+	echo 
+	echo "	  -S, --scan"
+	echo "		  Scan for wifi signals (summary output)."
 }
 
 ##
@@ -181,19 +181,19 @@ usage()
 ##
 wifi_strength()
 {
-    if ! wifi_is_connected
-    then
-        echo ":: No network connection."
-        return ${EXIT_WIFI_NO_CONNECTION}
-    fi
+	if ! wifi_is_connected
+	then
+		echo ":: No network connection."
+		return ${EXIT_WIFI_NO_CONNECTION}
+	fi
 
-    local iface=$(wifi_interface_get)
-    local ssid=
-    local signal=
+	local iface=$(wifi_interface_get)
+	local ssid=
+	local signal=
 
-    wifi_interface_verify "${iface}" || return $?
-    ssid=$(wifi_get_ssid "${iface}")
-    signal=$(wifi_get_signal "${iface}")
+	wifi_interface_verify "${iface}" || return $?
+	ssid=$(wifi_get_ssid "${iface}")
+	signal=$(wifi_get_signal "${iface}")
 
 	if [ -n "${signal}" ]
 	then
@@ -202,7 +202,7 @@ wifi_strength()
 		echo "${ssid}"
 	fi
 
-    return 0
+	return 0
 }
 
 ##
@@ -210,19 +210,19 @@ wifi_strength()
 ##
 wifi_connect()
 {
-    local name="${1}"
+	local name="${1}"
 	local iface=$(wifi_interface_get)
-    wifi_connect_verify "${name}" || return $?
-    echo "Connecting to '${name}'."
-    sudo netctl stop-all
+	wifi_connect_verify "${name}" || return $?
+	echo "Connecting to '${name}'."
+	sudo netctl stop-all
 	sudo ip link set "${iface}" down
-    sudo netctl start "${name}"
-    if [ $? -ne 0 ]
-    then
-        echo "${PROJECT}: Failed to connect." 1>&2
-        return ${EXIT_WIFI_CONNECT_FAILED}
-    fi
-    return 0
+	sudo netctl start "${name}"
+	if [ $? -ne 0 ]
+	then
+		echo "${PROJECT}: Failed to connect." 1>&2
+		return ${EXIT_WIFI_CONNECT_FAILED}
+	fi
+	return 0
 }
 
 ##
@@ -230,9 +230,9 @@ wifi_connect()
 ##
 wifi_disconnect()
 {
-    echo ":: Disconnecting wifi."
-    sudo netctl stop-all
-    return $?
+	echo ":: Disconnecting wifi."
+	sudo netctl stop-all
+	return $?
 }
 
 ##
@@ -240,22 +240,22 @@ wifi_disconnect()
 ##
 wifi_info()
 {
-    local outputfile="/tmp/${PROJECT}"
-    local ipv4=$(wget https://v4.ifconfig.co -O - -o /dev/null)
-    wget https://whatismyipaddress.com/ip/${ipv4} -O "${outputfile}" \
-         -o /dev/null
-    local isp=$(grep 'ISP:' "${outputfile}" | sed 's/<[^>]*>//g')
-    local services=$(grep 'Services:' "${outputfile}" | sed 's/<[^>]*>//g')
-    local city=$(grep 'City:' "${outputfile}" | sed 's/<[^>]*>//g')
-    local region=$(grep 'Region:' "${outputfile}" | sed 's/<[^>]*>//g')
-    local country=$(grep 'Country:' "${outputfile}" | sed 's/<[^>]*>//g')
-    rm -f "${outputfile}"
-    echo "IPv4     : ${ipv4}"
-    echo "ISP      : ${isp##*:}"
-    echo "Services : ${services##*:}"
-    echo "City     : ${city##*:}"
-    echo "Region   : ${region##*:}"
-    echo "Country  : ${country##*:}"
+	local outputfile="/tmp/${PROJECT}"
+	local ipv4=$(wget https://v4.ifconfig.co -O - -o /dev/null)
+	wget https://whatismyipaddress.com/ip/${ipv4} -O "${outputfile}" \
+		 -o /dev/null
+	local isp=$(grep 'ISP:' "${outputfile}" | sed 's/<[^>]*>//g')
+	local services=$(grep 'Services:' "${outputfile}" | sed 's/<[^>]*>//g')
+	local city=$(grep 'City:' "${outputfile}" | sed 's/<[^>]*>//g')
+	local region=$(grep 'Region:' "${outputfile}" | sed 's/<[^>]*>//g')
+	local country=$(grep 'Country:' "${outputfile}" | sed 's/<[^>]*>//g')
+	rm -f "${outputfile}"
+	echo "IPv4	   : ${ipv4}"
+	echo "ISP	   : ${isp##*:}"
+	echo "Services : ${services##*:}"
+	echo "City	   : ${city##*:}"
+	echo "Region   : ${region##*:}"
+	echo "Country  : ${country##*:}"
 }
 
 ##
@@ -283,14 +283,16 @@ wifi_list()
 ##
 wifi_private()
 {
-    echo "Private IP address:"
-    local IFS=$' \n'
-    local ip=
-    for ip in $(hostname -i)
-    do
-        echo "* ${ip}"
-    done
-    return 0
+	echo "Private IP address:"
+	local IFS=$' \n'
+	local ip=
+
+	for ip in $(ip addr show | grep -w inet | awk '{ print $2 }' \
+		| cut -f1 -d'/')
+	do
+		echo "* ${ip}"
+	done
+	return 0
 }
 
 ##
@@ -298,11 +300,10 @@ wifi_private()
 ##
 wifi_public()
 {
-    echo "Public IP address:"
-    wget https://ifconfig.co -O - -o /dev/null
-    # wget http://checkip.dyndns.org -O - -o /dev/null \
-    #     | perl -pe 's/^.*?: (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})<.*/\*\ \1/'
-    return $?
+	echo "Public IP address:"
+    local ip=$(wget https://ifconfig.co -O - -o /dev/null)
+	echo "* ${ip}"
+	return $?
 }
 
 ##
@@ -310,10 +311,10 @@ wifi_public()
 ##
 wifi_scan_full()
 {
-    local iface=$(wifi_interface_get wifi)
+	local iface=$(wifi_interface_get wifi)
 	sudo ip link set "${iface}" up
-    sudo iw dev "${iface}" scan
-    return $?
+	sudo iw dev "${iface}" scan
+	return $?
 }
 
 ##
@@ -321,48 +322,48 @@ wifi_scan_full()
 ##
 wifi_scan_summary()
 {
-    local iface=$(wifi_interface_get wifi)
-    wifi_interface_verify "${iface}" || return $?
-    echo "Scanning for wireless networks."
-    local IFS=$'\n'
-    local line=
-    local info=()
+	local iface=$(wifi_interface_get wifi)
+	wifi_interface_verify "${iface}" || return $?
+	echo "Scanning for wireless networks."
+	local IFS=$'\n'
+	local line=
+	local info=()
 
-    for line in $(wifi_scan_full)
-    do
-        if [ "${line:1:4}" == "SSID" ]
-        then
-            info[0]="${line:7}"
-        elif [ "${line:1:6}" == "signal" ]
-        then
-            info[1]="${line:9}"
-        elif [ "${line:1:9}" == "last seen" ]
-        then
-            info[2]="${line:12}"
-        elif [ "${line:1:4}" == "freq" ]
-        then
-            info[3]="${line:7} MHz"
-        else
-            continue
-        fi
-        if [ ${#info[@]} -eq 4 ]
-        then
+	for line in $(wifi_scan_full)
+	do
+		if [ "${line:1:4}" == "SSID" ]
+		then
+			info[0]="${line:7}"
+		elif [ "${line:1:6}" == "signal" ]
+		then
+			info[1]="${line:9}"
+		elif [ "${line:1:9}" == "last seen" ]
+		then
+			info[2]="${line:12}"
+		elif [ "${line:1:4}" == "freq" ]
+		then
+			info[3]="${line:7} MHz"
+		else
+			continue
+		fi
+		if [ ${#info[@]} -eq 4 ]
+		then
 			if [ -z "${info[0]}" ]
 			then
 				info=()
 				continue
 			fi
 
-            echo
-            echo "SSID      : ${info[0]}"
-            echo "Strength  : ${info[1]}"
-            echo "Last Seen : ${info[2]}"
-            echo "Frequency : ${info[3]}"
+			echo
+			echo "SSID		: ${info[0]}"
+			echo "Strength	: ${info[1]}"
+			echo "Last Seen : ${info[2]}"
+			echo "Frequency : ${info[3]}"
 
-            info=()
-        fi
-    done
-    return 0
+			info=()
+		fi
+	done
+	return 0
 }
 
 ##
@@ -376,7 +377,7 @@ wifi_get_ssid()
 	else
 		iw dev "${1}" link | grep SSID | sed 's/^[ \t]*SSID: //'
 	fi
-    return $?
+	return $?
 }
 
 ##
@@ -389,13 +390,13 @@ wifi_get_signal()
 		return 1
 	fi
 
-    local iface="${1}"
-    local netfile="/proc/net/wireless"
-    local dbm=$(grep "${iface}" "${netfile}" | awk '{ print $3 }')
-    local signal=$(echo "scale=2; ${dbm}/70*100" | bc)
+	local iface="${1}"
+	local netfile="/proc/net/wireless"
+	local dbm=$(grep "${iface}" "${netfile}" | awk '{ print $3 }')
+	local signal=$(echo "scale=2; ${dbm}/70*100" | bc)
 
-    echo "${signal} / 1" | bc
-    return $?
+	echo "${signal} / 1" | bc
+	return $?
 }
 
 ##
@@ -404,13 +405,13 @@ wifi_get_signal()
 ##
 wifi_connect_verify()
 {
-    local name="${1}"
-    if [ ! -f "/etc/netctl/${name}" ]
-    then
-        echo "${PROJECT}: Unable to connect to '${name}'." 1>&2
-        return ${EXIT_WIFI_INVALID_CONNECTION_NAME}
-    fi
-    return 0
+	local name="${1}"
+	if [ ! -f "/etc/netctl/${name}" ]
+	then
+		echo "${PROJECT}: Unable to connect to '${name}'." 1>&2
+		return ${EXIT_WIFI_INVALID_CONNECTION_NAME}
+	fi
+	return 0
 }
 
 ##
@@ -419,8 +420,8 @@ wifi_connect_verify()
 wifi_interface_get()
 {
 	local input="${1}"
-    local IFS=$'\n'
-    local line=
+	local IFS=$'\n'
+	local line=
 	local get=""
 
 	case "${input}" in
@@ -429,11 +430,11 @@ wifi_interface_get()
 		*) ;;
 	esac
 
-    for line in $(ip link show)
-    do
-        local IFS=$': '
-        local columns=(${line})
-        local iface="${columns[1]// /}"
+	for line in $(ip link show)
+	do
+		local IFS=$': '
+		local columns=(${line})
+		local iface="${columns[1]// /}"
 
 		if ! [[ "${line:0:1}" =~ [0-9] ]] \
 			|| [ "${columns[1]:0:2}" == "lo" -o "${columns[1]:0:3}" == "tun" ]
@@ -441,15 +442,15 @@ wifi_interface_get()
 			continue
 		fi
 
-        if [ -n "${get}" -a "${iface:0:1}" == "${get}" ] \
+		if [ -n "${get}" -a "${iface:0:1}" == "${get}" ] \
 			|| [ -z "${get}" -a $(echo "${columns[2]}" | grep -c UP) -gt 0 ]
-        then
-            echo "${iface}"
-            return 0
-        fi
-    done
+		then
+			echo "${iface}"
+			return 0
+		fi
+	done
 
-    return 1
+	return 1
 }
 
 ##
@@ -459,13 +460,13 @@ wifi_interface_get()
 ##
 wifi_interface_verify()
 {
-    local iface="${1}"
-    if [ -z "${iface}" -o "$(wifi_interface_get)" != "${iface}" ]
-    then
-        echo "${PROJECT}: Invalid network interface '${iface}'." 1>&2
-        return ${EXIT_WIFI_INVALID_INTERFACE}
-    fi
-    return 0
+	local iface="${1}"
+	if [ -z "${iface}" -o "$(wifi_interface_get)" != "${iface}" ]
+	then
+		echo "${PROJECT}: Invalid network interface '${iface}'." 1>&2
+		return ${EXIT_WIFI_INVALID_INTERFACE}
+	fi
+	return 0
 }
 
 ##
@@ -478,16 +479,16 @@ wifi_is_connected()
 
 	ping -q -w 1 -c 1 "${gateway}" &> /dev/null
 
-    if [ $? -ne 0 ]
-    then
-        flag=$[ ${flag} + 1 ]
-    fi
+	if [ $? -ne 0 ]
+	then
+		flag=$[ ${flag} + 1 ]
+	fi
 
 	ping -q -w 1 -c 1 8.8.8.8 &> /dev/null
 
 	if [ $? -ne 0 ]
 	then
-        flag=$[ ${flag} + 1 ]
+		flag=$[ ${flag} + 1 ]
 	fi
 
 	if [ ${flag} -gt 1 ]
@@ -495,7 +496,7 @@ wifi_is_connected()
 		return 1
 	fi
 
-    return 0
+	return 0
 }
 
 ##
