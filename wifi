@@ -184,6 +184,7 @@ wifi_strength()
     if ! wifi_is_connected
     then
         echo ":: No network connection."
+		echo "[$(date)] NET : No network connection." >> /home/gabeg/wifi.log
         return ${EXIT_WIFI_NO_CONNECTION}
     fi
 
@@ -366,6 +367,38 @@ wifi_scan_summary()
 }
 
 ##
+# Return the IP address of the gateway.
+##
+wifi_get_gateway()
+{
+	local gateway=$(ip route | awk '/default/ { print $3 }' | head -1)
+	local vpnRoute=$(ip route | awk "/ ${gateway} /"' { print $1 }' \
+		| grep -v default | tail -1)
+
+	if [ -n "${vpnRoute}" ]
+	then
+		echo "${vpnRoute}"
+	else
+		echo "${gateway}"
+	fi
+}
+
+##
+# Return the IP address of the nameserver.
+# 
+# Note: Should this return a list of nameservers?
+##
+wifi_get_nameserver()
+{
+	local resolvconf="/etc/resolv.conf"
+	local nameserver=$(grep -v '^#' "${resolvconf}" \
+		| awk '/nameserver/ { print $2 }' \
+		| head -1)
+
+	echo "${nameserver}"
+}
+
+##
 # Return the wifi SSID.
 ##
 wifi_get_ssid()
@@ -473,24 +506,27 @@ wifi_interface_verify()
 ##
 wifi_is_connected()
 {
-	local gateway=$(ip route | grep default | cut -f3 -d' ')
+	#local gateway=$(ip route | grep default | cut -f3 -d' ')
+	local gateway=$(wifi_get_gateway)
+	local nameserver=$(wifi_get_nameserver)
 	local flag=0
 
-	ping -q -w 1 -c 1 "${gateway}" &> /dev/null
+	#ping -q -w 1 -c 1 "${gateway}" &> /dev/null
 
-    if [ $? -ne 0 ]
-    then
-        flag=$[ ${flag} + 1 ]
-    fi
+    #if [ $? -ne 0 ]
+    #then
+    #    flag=$[ ${flag} + 1 ]
+	#	echo "[$(date)] GATEWAY : Ping gateway failed : ${gateway}" >> /home/gabeg/wifi.log
+    #fi
 
-	ping -q -w 1 -c 1 8.8.8.8 &> /dev/null
+	ping -q -w 1 -c 1 "${nameserver}" &> /dev/null
 
 	if [ $? -ne 0 ]
 	then
         flag=$[ ${flag} + 1 ]
 	fi
 
-	if [ ${flag} -gt 1 ]
+	if [ ${flag} -gt 0 ]
 	then
 		return 1
 	fi
