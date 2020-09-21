@@ -300,7 +300,7 @@ wifi_private()
 wifi_public()
 {
 	echo "Public IP address:"
-	local ip=$(wget https://ifconfig.co -O - -o /dev/null)
+	local ip=$(wget -qO- ifconfig.co)
 	echo "* ${ip}"
 	return $?
 }
@@ -389,7 +389,8 @@ wifi_get_gateway()
 ##
 wifi_get_nameserver()
 {
-	local resolvconf="/etc/resolv.conf"
+	#local resolvconf="/etc/resolv.conf"
+	local resolvconf="/run/systemd/resolve/resolv.conf"
 	local nameserver=$(grep -v '^#' "${resolvconf}" \
 		| awk '/nameserver/ { print $2 }' \
 		| head -1)
@@ -511,13 +512,6 @@ wifi_is_connected()
 	local flag=0
 
 	#ping -q -w 1 -c 1 "${gateway}" &> /dev/null
-
-	#if [ $? -ne 0 ]
-	#then
-	#	 flag=$[ ${flag} + 1 ]
-	#	echo "[$(date)] GATEWAY : Ping gateway failed : ${gateway}" >> /home/gabeg/wifi.log
-	#fi
-
 	ping -q -w 1 -c 1 "${nameserver}" &> /dev/null
 
 	if [ $? -ne 0 ]
