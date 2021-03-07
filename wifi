@@ -459,17 +459,17 @@ wifi_interface_get()
 	case "${input}" in
 		"wifi") get="w" ;;
 		"wired") get="e" ;;
-		*) get="w" ;;
+		*) get="" ;;
 	esac
 
-	for line in $(ip link show)
+	for line in $(ip link show | grep -E "^[[:digit:]]")
 	do
 		local IFS=$': '
 		local columns=(${line})
 		local iface="${columns[1]// /}"
+		local shouldSkip=$(echo "${columns[2]}" | grep -c 'LOOPBACK\|NO-CARRIER\|POINTTOPOINT')
 
-		if ! [[ "${line:0:1}" =~ [0-9] ]] \
-			|| [ "${columns[1]:0:2}" == "lo" -o "${columns[1]:0:3}" == "tun" ]
+		if [ ${shouldSkip} -ne 0 ]
 		then
 			continue
 		fi
