@@ -212,7 +212,7 @@ wifi_connect()
 	local name="${1}"
 	local iface=$(wifi_interface_get)
 	wifi_connect_verify "${name}" || return $?
-	echo "Connecting to '${name}'."
+	echo "Connecting to '${name}' on '${iface}'."
 	sudo netctl stop-all
 	sudo ip link set "${iface}" down
 	sudo netctl start "${name}"
@@ -389,8 +389,8 @@ wifi_get_gateway()
 ##
 wifi_get_nameserver()
 {
-	#local resolvconf="/etc/resolv.conf"
-	local resolvconf="/run/systemd/resolve/resolv.conf"
+	local resolvconf="/etc/resolv.conf"
+	#local resolvconf="/run/systemd/resolve/resolv.conf"
 	local nameserver=$(grep -v '^#' "${resolvconf}" \
 		| awk '/nameserver/ { print $2 }' \
 		| head -1)
@@ -459,7 +459,7 @@ wifi_interface_get()
 	case "${input}" in
 		"wifi") get="w" ;;
 		"wired") get="e" ;;
-		*) ;;
+		*) get="w" ;;
 	esac
 
 	for line in $(ip link show)
